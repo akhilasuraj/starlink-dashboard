@@ -51,6 +51,7 @@ class StarlinkTrayApp:
         self.canvas = None
         self.line_down = None
         self.line_up = None
+        self.update_counter = 0  # Throttle graph updates
         
         # Start Polling Thread
         self.poll_thread = threading.Thread(target=self.poll_loop, daemon=True)
@@ -135,7 +136,7 @@ class StarlinkTrayApp:
                          self.stats["status_text"] = "Online (Obstructed)"
                          color = "yellow"
                      else:
-                         self.stats["status_text"] = f"Online: {self.stats['down']:.1f} Mbps"
+                         self.stats["status_text"] = "Online"
                 elif self.stats["obstructed_pct"] > 0.0:
                     color = "yellow"
                     self.stats["status_text"] = "Obstructed"
@@ -196,22 +197,16 @@ class StarlinkTrayApp:
         self.tab_dev = self.tabs.add("DEVICE")
 
         # --- Network Tab ---
-        self.tab_net.grid_columnconfigure((0,1), weight=1)
+        self.tab_net.grid_columnconfigure((0,1,2), weight=1)
         
-        self.create_stat_card(self.tab_net, "DOWNLOAD", "lbl_down", 0, 0, "Mbps")
-        self.create_stat_card(self.tab_net, "UPLOAD", "lbl_up", 0, 1, "Mbps")
-        # Ping
-        f_ping = ctk.CTkFrame(self.tab_net)
-        f_ping.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
-        ctk.CTkLabel(f_ping, text="LATENCY", font=("Arial", 11, "bold"), text_color="gray").pack(pady=(10,2))
-        self.lbl_ping = ctk.CTkLabel(f_ping, text="--", font=("Arial", 22, "bold"))
-        self.lbl_ping.pack()
-        ctk.CTkLabel(f_ping, text="ms", font=("Arial", 10), text_color="gray").pack(pady=(0,10))
+        self.create_stat_card(self.tab_net, "UPLOAD", "lbl_up", 0, 0, "Mbps")
+        self.create_stat_card(self.tab_net, "DOWNLOAD", "lbl_down", 0, 1, "Mbps")
+        self.create_stat_card(self.tab_net, "LATENCY", "lbl_ping", 0, 2, "ms")
 
         # Graph Container
-        self.fr_graph = ctk.CTkFrame(self.tab_net, fg_color="#1a1a1a") # specific dark bg
-        self.fr_graph.grid(row=2, column=0, columnspan=2, padx=5, pady=10, sticky="nsew")
-        self.tab_net.grid_rowconfigure(2, weight=1)
+        self.fr_graph = ctk.CTkFrame(self.tab_net, fg_color="#1a1a1a")
+        self.fr_graph.grid(row=1, column=0, columnspan=3, padx=5, pady=10, sticky="nsew")
+        self.tab_net.grid_rowconfigure(1, weight=1)
         
         # Matplotlib Setup
         self.init_graph(self.fr_graph)
@@ -294,10 +289,9 @@ class StarlinkTrayApp:
 
     def update_dashboard(self):
         try:
-            # Header logic (same as before)
+            # Header logic
             if self.stats["online"]:
-                st_text = self.stats["status_text"].split(":")[-1].strip() if ":" in self.stats["status_text"] else self.stats["status_text"]
-                self.lbl_big_status.configure(text=st_text)
+                self.lbl_big_status.configure(text=self.stats["status_text"].upper())
                 color = "#00C853" if "Online" in self.stats["status_text"] else "#D50000"
                 if "Obstructed" in self.stats["status_text"]: color = "#FFAB00"
                 self.lbl_big_status.configure(text_color=color)
@@ -312,8 +306,9 @@ class StarlinkTrayApp:
             self.lbl_up.configure(text=f"{self.stats['up']:.1f}")
             self.lbl_ping.configure(text=f"{self.stats['ping']:.0f}")
 
-            # Graph Update
-            if self.ax and self.canvas:
+            # Graph Update - OPTIMIZED: Only draw if tab is visible and throttled
+            self.update_counter += 1
+            if self.ax and self.canvas and self.tabs.get() == "NETWORK" and self.update_counter % 3 == 0:
                 self.ax.clear()
                 # Re-setup styling (clearing removes everything)
                 self.ax.spines['top'].set_visible(False)
