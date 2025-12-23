@@ -1,5 +1,31 @@
+# Python
 __pycache__/
-*.spec
-build/
-dist/
+*.pyc
+*.pyo
 *.log
+*.spec
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Electron
+dist/
+build/
+out/
+*.exe
+*.dmg
+*.AppImage
+
+# Legacy (old CustomTkinter app)
+starlink_tray.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+

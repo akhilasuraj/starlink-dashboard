@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starlink Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="../node_modules/chart.js/dist/chart.umd.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 id="status">CONNECTING...</h1>
+            <p id="uptime">Uptime: --</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="network">NETWORK</button>
+            <button class="tab-btn" data-tab="visibility">VISIBILITY</button>
+            <button class="tab-btn" data-tab="device">DEVICE</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Network Tab -->
+            <div id="network" class="tab-pane active">
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-label">UPLOAD</div>
+                        <div class="stat-value" id="upload">--</div>
+                        <div class="stat-unit">Mbps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">DOWNLOAD</div>
+                        <div class="stat-value" id="download">--</div>
+                        <div class="stat-unit">Mbps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">LATENCY</div>
+                        <div class="stat-value" id="latency">--</div>
+                        <div class="stat-unit">ms</div>
+                    </div>
+                </div>
+                <div class="graph-container">
+                    <canvas id="speedChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Visibility Tab -->
+            <div id="visibility" class="tab-pane">
+                <div class="obstruction-info">
+                    <h3 id="obstruction-text">Obstructed: 0%</h3>
+                    <div class="progress-bar">
+                        <div id="obstruction-bar" class="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Tab -->
+            <div id="device" class="tab-pane">
+                <div class="device-section">
+                    <h3>DETAILS</h3>
+                    <div class="device-row">
+                        <span>Hardware</span>
+                        <span id="hardware">--</span>
+                    </div>
+                    <div class="device-row">
+                        <span>Software</span>
+                        <span id="software">--</span>
+                    </div>
+                    <div class="device-row">
+                        <span>GPS Sats</span>
+                        <span id="gps-sats">--</span>
+                    </div>
+                    <div class="device-row">
+                        <span>Eth Speed</span>
+                        <span id="eth-speed">--</span>
+                    </div>
+                    <div class="device-row">
+                        <span>Heater</span>
+                        <span id="heater">--</span>
+                    </div>
+                </div>
+                <div class="device-section">
+                    <h3>ALIGNMENT</h3>
+                    <div class="device-row">
+                        <span>Azimuth</span>
+                        <span id="azimuth">--</span>
+                    </div>
+                    <div class="device-row">
+                        <span>Elevation</span>
+                        <span id="elevation">--</span>
+                    </div>
+                    <div class="device-row">
+                        <span>Tilt</span>
+                        <span id="tilt">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

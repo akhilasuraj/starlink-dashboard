@@ -5,3 +5,5 @@ customtkinter
 matplotlib
 scipy
 numpy
+fastapi
+uvicorn

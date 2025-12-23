@@ -1,0 +1,25 @@
+{
+  "name": "starlink-dashboard",
+  "version": "1.0.0",
+  "description": "Starlink Statistics Dashboard",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "starlink",
+    "dashboard",
+    "electron"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "canvas": "^3.2.0",
+    "chart.js": "^4.4.1"
+  }
+}
