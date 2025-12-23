@@ -136,19 +136,19 @@ async function updateData() {
       : "#D50000";
 
     document.getElementById("uptime").textContent = `Uptime: ${formatUptime(
-      status.uptime with smooth animation
-    if (speedChart) {
-      speedChart.data.datasets[0].data = history.download;
-      speedChart.data.datasets[1].data = history.upload;
-      speedChart.update("active"); // Use smooth linear animationed(1);
+      status.uptime_s
+    )}`;
+
+    // Network stats
+    document.getElementById("upload").textContent = status.up.toFixed(1);
     document.getElementById("download").textContent = status.down.toFixed(1);
     document.getElementById("latency").textContent = Math.round(status.ping);
 
-    // Update chart
+    // Update chart with smooth animation
     if (speedChart) {
       speedChart.data.datasets[0].data = history.download;
       speedChart.data.datasets[1].data = history.upload;
-      speedChart.update("none"); // No animation for smooth updates
+      speedChart.update("active"); // Use smooth linear animation
     }
 
     // Visibility
