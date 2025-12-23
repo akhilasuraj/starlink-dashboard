@@ -4,6 +4,10 @@ __pycache__/
 *.pyo
 *.log
 *.spec
+*.egg-info/
+.venv/
+venv/
+env/
 
 # Node.js
 node_modules/
@@ -14,10 +18,26 @@ package-lock.json
 
 # Electron
 dist/
-build/
 out/
 *.exe
 *.dmg
+*.AppImage
+
+# Build artifacts
+build/*.exe
+build/*.ico
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
 *.AppImage
 
 # Legacy (old CustomTkinter app)

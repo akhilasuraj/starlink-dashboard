@@ -7,9 +7,29 @@ from starlink_client.grpc_client import GrpcClient
 import spacex.api.device.device_pb2 as device_pb2
 from google.protobuf.json_format import MessageToDict
 import logging
+from datetime import datetime
 
+# Setup logging with custom handler to capture logs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Log storage
+log_messages = deque(maxlen=200)  # Keep last 200 log messages
+
+class LogCapture(logging.Handler):
+    """Custom logging handler to capture logs"""
+    def emit(self, record):
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "level": record.levelname,
+            "message": self.format(record)
+        }
+        log_messages.append(log_entry)
+
+# Add custom handler to root logger
+log_handler = LogCapture()
+log_handler.setFormatter(logging.Formatter('%(levelname)s - %(name)s - %(message)s'))
+logging.getLogger().addHandler(log_handler)
 
 # Configuration
 STARLINK_IP = '192.168.100.1:9200'
@@ -134,6 +154,13 @@ async def get_history():
     return {
         "download": list(history_down),
         "upload": list(history_up)
+    }
+
+@app.get("/api/logs")
+async def get_logs():
+    """Get recent backend logs"""
+    return {
+        "logs": list(log_messages)
     }
 
 @app.get("/health")

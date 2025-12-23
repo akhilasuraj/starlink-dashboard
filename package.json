@@ -5,7 +5,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "dist": "set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win --config"
   },
   "keywords": [
     "starlink",
@@ -14,6 +16,63 @@
   ],
   "author": "",
   "license": "MIT",
+  "build": {
+    "appId": "com.starlink.dashboard",
+    "productName": "Starlink Dashboard",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "sign": null,
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "shortcutName": "Starlink Dashboard",
+      "perMachine": false,
+      "allowElevation": true,
+      "include": "build/installer.nsh"
+    },
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "requirements.txt",
+        "to": "requirements.txt"
+      },
+      {
+        "from": "build/setup-python-deps.bat",
+        "to": "../setup-python-deps.bat"
+      },
+      {
+        "from": "build/check-dependencies.bat",
+        "to": "../check-dependencies.bat"
+      }
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ]
+  },
   "devDependencies": {
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1"
