@@ -23,9 +23,9 @@ out/
 *.dmg
 *.AppImage
 
-# Build artifacts
+# Build artifacts - but keep icon files
 build/*.exe
-build/*.ico
+# build/*.ico - Allow icon files for installer
 
 # IDE
 .vscode/
