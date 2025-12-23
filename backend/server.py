@@ -163,6 +163,13 @@ async def get_logs():
         "logs": list(log_messages)
     }
 
+@app.post("/api/logs/clear")
+async def clear_logs():
+    """Clear all backend logs"""
+    log_messages.clear()
+    logger.info("Logs cleared")
+    return {"status": "ok"}
+
 @app.get("/health")
 async def health():
     """Health check endpoint"""

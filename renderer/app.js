@@ -16,8 +16,9 @@ function initChart() {
         {
           label: "Download",
           data: Array(30).fill(0),
-          borderColor: "#FFD700",
-          backgroundColor: "rgba(255, 215, 0, 0.5)",
+          borderColor: "transparent",
+          borderWidth: 0,
+          backgroundColor: "rgba(255, 215, 0, 0.3)",
           fill: true,
           tension: 0.4,
           pointRadius: 0,
@@ -25,8 +26,9 @@ function initChart() {
         {
           label: "Upload",
           data: Array(30).fill(0),
-          borderColor: "#D50000",
-          backgroundColor: "rgba(213, 0, 0, 0.5)",
+          borderColor: "transparent",
+          borderWidth: 0,
+          backgroundColor: "rgba(213, 0, 0, 0.3)",
           fill: true,
           tension: 0.4,
           pointRadius: 0,
@@ -36,18 +38,7 @@ function initChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: {
-        duration: 1000,
-        easing: "linear",
-      },
-      transitions: {
-        active: {
-          animation: {
-            duration: 1000,
-            easing: "linear",
-          },
-        },
-      },
+      animation: false,
       plugins: {
         legend: {
           display: true,
@@ -55,6 +46,10 @@ function initChart() {
           labels: {
             color: "#888",
             font: { size: 10 },
+            usePointStyle: true,
+            pointStyle: "circle",
+            boxWidth: 6,
+            boxHeight: 6,
           },
         },
       },
@@ -144,11 +139,11 @@ async function updateData() {
     document.getElementById("download").textContent = status.down.toFixed(1);
     document.getElementById("latency").textContent = Math.round(status.ping);
 
-    // Update chart with smooth animation
+    // Update chart
     if (speedChart) {
       speedChart.data.datasets[0].data = history.download;
       speedChart.data.datasets[1].data = history.upload;
-      speedChart.update("active"); // Use smooth linear animation
+      speedChart.update();
     }
 
     // Visibility
@@ -236,10 +231,15 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(updateLogs, 1000); // Update logs every second
 
   // Clear logs button
-  document.getElementById("clear-logs").addEventListener("click", () => {
-    const logsContent = document.getElementById("logs-content");
-    logsContent.innerHTML =
-      '<div class="log-entry"><span class="log-message">Logs cleared</span></div>';
+  document.getElementById("clear-logs").addEventListener("click", async () => {
+    try {
+      await fetch(`${API_URL}/api/logs/clear`, { method: "POST" });
+      const logsContent = document.getElementById("logs-content");
+      logsContent.innerHTML =
+        '<div class="log-entry"><span class="log-message">Logs cleared</span></div>';
+    } catch (err) {
+      console.error("Failed to clear logs:", err);
+    }
   });
 
   // Detect manual scroll to disable auto-scroll
