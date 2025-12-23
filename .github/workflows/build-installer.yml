@@ -4,7 +4,12 @@ on:
   push:
     branches:
       - master
+    tags:
+      - "v*"
   workflow_dispatch: # Allows manual trigger from GitHub UI
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -18,16 +23,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
 
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
