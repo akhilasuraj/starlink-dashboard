@@ -19,6 +19,7 @@
   "build": {
     "appId": "com.starlink.dashboard",
     "productName": "Starlink Dashboard",
+    "publish": null,
     "win": {
       "target": [
         {
