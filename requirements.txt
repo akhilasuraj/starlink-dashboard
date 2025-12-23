@@ -1,0 +1,7 @@
+starlink-client
+pystray
+Pillow
+customtkinter
+matplotlib
+scipy
+numpy
