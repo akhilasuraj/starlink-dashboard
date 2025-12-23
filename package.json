@@ -1,6 +1,6 @@
 {
   "name": "starlink-dashboard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Starlink Statistics Dashboard",
   "main": "main.js",
   "scripts": {
