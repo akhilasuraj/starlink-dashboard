@@ -8,6 +8,9 @@ on:
       - 'v*'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
