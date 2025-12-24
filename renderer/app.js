@@ -97,6 +97,18 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
   });
 });
 
+// Handle window resize
+let resizeTimeout;
+window.addEventListener("resize", () => {
+  if (speedChart) {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      speedChart.resize();
+      speedChart.update("none"); // Update without animation
+    }, 100);
+  }
+});
+
 // Format uptime
 function formatUptime(seconds) {
   const days = Math.floor(seconds / 86400);

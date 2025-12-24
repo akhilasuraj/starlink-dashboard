@@ -9,6 +9,8 @@ body {
   background: #1a1a1a;
   color: #fff;
   overflow: hidden;
+  width: 100vw;
+  height: 100vh;
 }
 
 .container {
@@ -65,10 +67,11 @@ body {
 /* Tab Content */
 .tab-content {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 20px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .tab-pane {
@@ -79,6 +82,8 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Stats Row */
@@ -120,9 +125,10 @@ body {
   border-radius: 8px;
   padding: 15px;
   flex: 1;
-  min-height: 300px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 #speedChart {

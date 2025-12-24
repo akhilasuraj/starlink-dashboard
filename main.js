@@ -183,23 +183,24 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Enable auto-start on Windows (for portable/development mode)
-  // The installer will also add registry entry for auto-start
-  if (process.platform === "win32") {
-    app.setLoginItemSettings({
-      openAtLogin: true,
-      openAsHidden: true,
-      path: process.execPath,
-      args: [],
-    });
-  }
+  // Don't enable auto-start programmatically - the installer handles this
+  // Only enable for development if needed
+  // if (!app.isPackaged && process.platform === "win32") {
+  //   app.setLoginItemSettings({
+  //     openAtLogin: true,
+  //     openAsHidden: true,
+  //   });
+  // }
 
   startBackend();
 
   // Wait a bit for backend to start
   setTimeout(() => {
     createTray();
-    createWindow();
+    // Only show window on startup if not started with --hidden flag
+    if (!process.argv.includes("--hidden")) {
+      createWindow();
+    }
   }, 2000);
 });
 

@@ -2,8 +2,8 @@
 ; This script adds the application to Windows startup registry
 
 !macro customInstall
-  ; Add to startup registry for current user
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "StarlinkDashboard" "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
+  ; Add to startup registry for current user with --hidden flag
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "StarlinkDashboard" '"$INSTDIR\${APP_EXECUTABLE_FILENAME}" --hidden'
   
   ; Copy Python dependency installer and checker scripts
   SetOutPath "$INSTDIR"
