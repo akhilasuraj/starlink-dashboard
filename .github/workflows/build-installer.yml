@@ -42,15 +42,15 @@ jobs:
           $tag = git describe --tags --exact-match
           $tagVersion = $tag -replace '^v', ''
           $packageVersion = (Get-Content package.json | ConvertFrom-Json).version
-          
+
           Write-Host "Git tag version: $tagVersion"
           Write-Host "package.json version: $packageVersion"
-          
+
           if ($tagVersion -ne $packageVersion) {
             Write-Error "Version mismatch! Git tag is v$tagVersion but package.json has version $packageVersion"
             exit 1
           }
-          
+
           Write-Host "✓ Version validation passed: $tagVersion"
 
       - name: Build installer
