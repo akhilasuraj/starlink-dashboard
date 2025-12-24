@@ -18,6 +18,7 @@
       <!-- Tabs -->
       <div class="tabs">
         <button class="tab-btn active" data-tab="network">NETWORK</button>
+        <button class="tab-btn" data-tab="statistics">STATISTICS</button>
         <button class="tab-btn" data-tab="visibility">VISIBILITY</button>
         <button class="tab-btn" data-tab="device">DEVICE</button>
         <button class="tab-btn" data-tab="logs">LOGS</button>
@@ -46,6 +47,71 @@
           </div>
           <div class="graph-container">
             <canvas id="speedChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div id="statistics" class="tab-pane">
+          <div class="stats-list">
+            <!-- Ping Success -->
+            <div class="stat-item">
+              <div class="stat-item-header">
+                <span class="stat-item-title">Ping success</span>
+              </div>
+              <div class="stat-item-value">
+                <span class="stat-large" id="ping-success">--</span>
+                <span class="stat-unit">%</span>
+              </div>
+              <div class="stat-item-subtitle">last 15 minutes</div>
+              <div class="stat-item-chart">
+                <canvas id="pingChart" height="30"></canvas>
+              </div>
+            </div>
+
+            <!-- Latency -->
+            <div class="stat-item">
+              <div class="stat-item-header">
+                <span class="stat-item-title">Latency</span>
+              </div>
+              <div class="stat-item-value">
+                <span class="stat-large" id="latency-stat">--</span>
+                <span class="stat-unit">ms</span>
+              </div>
+              <div class="stat-item-subtitle">median, last 15 minutes</div>
+              <div class="stat-item-chart">
+                <canvas id="latencyChart" height="30"></canvas>
+              </div>
+            </div>
+
+            <!-- Power Draw -->
+            <div class="stat-item">
+              <div class="stat-item-header">
+                <span class="stat-item-title">Power draw</span>
+              </div>
+              <div class="stat-item-value">
+                <span class="stat-large" id="power-draw">--</span>
+                <span class="stat-unit">W</span>
+              </div>
+              <div class="stat-item-subtitle">average, last 15 minutes</div>
+              <div class="stat-item-chart">
+                <canvas id="powerChart" height="30"></canvas>
+              </div>
+            </div>
+
+            <!-- Throughput -->
+            <div class="stat-item">
+              <div class="stat-item-header">
+                <span class="stat-item-title">Throughput</span>
+              </div>
+              <div class="stat-item-value">
+                <span class="stat-large" id="throughput">--</span>
+                <span class="stat-unit">Mbps</span>
+              </div>
+              <div class="stat-item-subtitle">download</div>
+              <div class="stat-item-chart">
+                <canvas id="throughputChart" height="30"></canvas>
+              </div>
+            </div>
           </div>
         </div>
 

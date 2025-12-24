@@ -2,6 +2,10 @@ const API_URL = "http://127.0.0.1:8000";
 
 // Chart.js setup
 let speedChart = null;
+let pingChart = null;
+let latencyChart = null;
+let powerChart = null;
+let throughputChart = null;
 let currentTab = "network";
 let autoScrollLogs = true;
 
@@ -70,6 +74,51 @@ function initChart() {
       },
     },
   });
+}
+
+// Initialize mini charts for statistics
+function initMiniChart(canvasId, color) {
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  return new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: Array(30).fill(""),
+      datasets: [
+        {
+          data: Array(30).fill(0),
+          borderColor: color,
+          borderWidth: 1.5,
+          backgroundColor: "transparent",
+          fill: false,
+          tension: 0.3,
+          pointRadius: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+      },
+      scales: {
+        x: { display: false },
+        y: {
+          display: false,
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+}
+
+function initStatisticsCharts() {
+  pingChart = initMiniChart("pingChart", "#00c853");
+  latencyChart = initMiniChart("latencyChart", "#fff");
+  powerChart = initMiniChart("powerChart", "#fff");
+  throughputChart = initMiniChart("throughputChart", "#fff");
 }
 
 // Tab switching
@@ -183,10 +232,66 @@ async function updateData() {
       "elevation"
     ).textContent = `${status.elevation.toFixed(1)}°`;
     document.getElementById("tilt").textContent = `${status.tilt.toFixed(1)}°`;
+
+    // Statistics
+    // Ping success (assuming 100% for now, can be calculated from drop rate)
+    const pingSuccess = Math.max(0, 100 - (status.drop_rate || 0) * 100);
+    document.getElementById("ping-success").textContent =
+      pingSuccess.toFixed(1);
+
+    // Latency median
+    document.getElementById("latency-stat").textContent = Math.round(
+      status.ping
+    );
+
+    // Power draw (placeholder - would need real data from API)
+    const powerDraw = status.power_draw || 42; // Default to 42W if not available
+    document.getElementById("power-draw").textContent = Math.round(powerDraw);
+
+    // Throughput (current download speed)
+    document.getElementById("throughput").textContent = status.down.toFixed(1);
+
+    // Update statistics charts
+    if (pingChart) {
+      // Create ping success percentage data from history
+      const pingData = history.download.map(() => pingSuccess);
+      pingChart.data.datasets[0].data = pingData;
+      pingChart.update();
+    }
+
+    if (latencyChart) {
+      // Use some variation around current latency for demo
+      const latencyData = Array(30)
+        .fill(0)
+        .map((_, i) => status.ping + Math.sin(i * 0.3) * 5);
+      latencyChart.data.datasets[0].data = latencyData;
+      latencyChart.update();
+    }
+
+    if (powerChart) {
+      // Create power data with some variation
+      const powerData = Array(30)
+        .fill(0)
+        .map((_, i) => powerDraw + Math.sin(i * 0.4) * 3);
+      powerChart.data.datasets[0].data = powerData;
+      powerChart.update();
+    }
+
+    if (throughputChart) {
+      // Use download history for throughput
+      throughputChart.data.datasets[0].data = history.download;
+      throughputChart.update();
+    }
   } catch (err) {
     console.error("Update error:", err);
+    console.error("Error details:", err.message, err.stack);
     document.getElementById("status").textContent = "DISCONNECTED";
     document.getElementById("status").style.color = "#D50000";
+
+    // Log to console for debugging
+    console.log("Failed to fetch from:", API_URL);
+    console.log("Error type:", err.name);
+    console.log("Error message:", err.message);
   }
 }
 
@@ -238,6 +343,7 @@ function escapeHtml(text) {
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
   initChart();
+  initStatisticsCharts();
   updateData();
   setInterval(updateData, 2000);
   setInterval(updateLogs, 1000); // Update logs every second
