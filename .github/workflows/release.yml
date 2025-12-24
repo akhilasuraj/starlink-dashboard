@@ -3,7 +3,7 @@ name: Create Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -11,13 +11,13 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Generate changelog
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v4
@@ -89,23 +89,23 @@ jobs:
             }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           body: |
             # Starlink Dashboard ${{ github.ref_name }}
-            
+
             ## What's Changed
             ${{ steps.changelog.outputs.changelog }}
-            
+
             ## Installation
-            
+
             ### Windows
             1. Download `Starlink-Dashboard-Setup.exe` from the assets below
             2. Run the installer
             3. The application will start automatically on system startup
-            
+
             ### From Source
             ```bash
             git clone https://github.com/akhilasuraj/starlink-dashboard.git
@@ -114,9 +114,9 @@ jobs:
             pip install -r requirements.txt
             npm start
             ```
-            
+
             ---
-            
+
             **Note:** Requires Python 3.7+ and an active Starlink connection.
           draft: false
           prerelease: false
