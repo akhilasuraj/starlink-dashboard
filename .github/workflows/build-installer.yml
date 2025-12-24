@@ -40,11 +40,20 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist
 
-      - name: Get version from package.json
+      - name: Get version
         id: version
         shell: pwsh
         run: |
-          $version = (Get-Content package.json | ConvertFrom-Json).version
+          # Try to get version from git tag first
+          $tag = git describe --tags --exact-match 2>$null
+          if ($tag -and $tag -match '^v(.+)$') {
+            $version = $matches[1]
+            echo "Using version from tag: $version"
+          } else {
+            # Fall back to package.json version
+            $version = (Get-Content package.json | ConvertFrom-Json).version
+            echo "Using version from package.json: $version"
+          }
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Upload installer artifact
