@@ -1,6 +1,7 @@
 import asyncio
 import json
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -9,16 +10,18 @@ from fastapi.testclient import TestClient
 
 from backend.history import HistoryStore
 from backend.server import Collector, DishUnreachable, app
+from backend.tests.fixture_status_api import core_status_fixture
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class FixtureTransport:
-    def __init__(self, *readings, dish_diagnostics=None, router_diagnostics=None):
+    def __init__(self, *readings, dish_diagnostics=None, router_diagnostics=None, obstruction_map=None):
         self.readings = iter(readings)
         self.dish_diagnostics = iter(dish_diagnostics) if isinstance(dish_diagnostics, list) else dish_diagnostics
         self.router_diagnostics = iter(router_diagnostics) if isinstance(router_diagnostics, list) else router_diagnostics
+        self.obstruction_map = iter(obstruction_map) if isinstance(obstruction_map, list) else obstruction_map
 
     def read_status(self):
         reading = next(self.readings)
@@ -38,6 +41,12 @@ class FixtureTransport:
             raise value
         return value
 
+    def read_obstruction_map(self):
+        value = next(self.obstruction_map) if hasattr(self.obstruction_map, "__next__") else self.obstruction_map
+        if isinstance(value, Exception):
+            raise value
+        return value
+
 
 class StatusApiTests(unittest.TestCase):
     def setUp(self):
@@ -49,14 +58,136 @@ class StatusApiTests(unittest.TestCase):
     def fixture(self, name):
         return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
-    def collector(self, *readings, dish_diagnostics=None, router_diagnostics=None):
+    def collector(self, *readings, dish_diagnostics=None, router_diagnostics=None, obstruction_map=None):
         collector = Collector(
             FixtureTransport(*readings, dish_diagnostics=dish_diagnostics,
-                             router_diagnostics=router_diagnostics), now=lambda: self.clock,
+                             router_diagnostics=router_diagnostics, obstruction_map=obstruction_map), now=lambda: self.clock,
             history_store=HistoryStore(Path(self.temp.name) / "history.sqlite3"),
         )
         app.state.collector = collector
         return collector
+
+    def test_obstruction_view_separates_observed_fraction_and_directional_snr_samples(self):
+        reading = self.fixture("online-idle.json")
+        reading["fraction_obstructed"] = 0.125
+        reading["currently_obstructed"] = False
+        collector = self.collector(reading, obstruction_map=((0.0, 0.5, -1.0), (1.0, 0.75, 0.25)))
+        async def collect():
+            await collector.poll_once()
+            await collector.obstruction_map_task
+        asyncio.run(collect())
+        status = self.status()
+        self.assertEqual(status["metrics"]["obstructed_pct"]["value"], 12.5)
+        self.assertEqual(status["obstruction"]["currently_obstructed"]["value"], False)
+        self.assertEqual(status["obstruction"]["currently_obstructed"]["availability"], "available")
+        self.assertEqual(status["obstruction"]["signal_map"]["cells"],
+                         [[0.0, 0.5, None], [1.0, 0.75, 0.25]])
+        self.assertEqual(status["obstruction"]["signal_map"]["valid_cells"], 5)
+        self.assertEqual(status["obstruction"]["signal_map"]["source"],
+                         "starlink-grpc-core.obstruction_map")
+        self.assertEqual(status["obstruction"]["signal_map"]["observed_at"], "2026-09-27T12:00:00Z")
+
+    def test_absent_obstruction_message_defaults_stay_unavailable_in_public_status(self):
+        collector = self.collector(core_status_fixture(self.fixture("obstruction-defaults.json")))
+        asyncio.run(collector.poll_once())
+        status = self.status()
+        self.assertEqual(status["service_state"], "online")
+        self.assertEqual(status["metrics"]["obstructed_pct"]["availability"], "unavailable")
+        self.assertIsNone(status["metrics"]["obstructed_pct"]["source"])
+        self.assertEqual(status["obstruction"]["currently_obstructed"]["availability"], "unavailable")
+
+    def test_zero_obstruction_with_presence_evidence_is_a_real_public_reading(self):
+        groups = self.fixture("obstruction-defaults.json")
+        groups["obstruction_detail"]["valid_s"] = 3600.0
+        collector = self.collector(core_status_fixture(groups))
+        asyncio.run(collector.poll_once())
+        status = self.status()
+        self.assertEqual(status["metrics"]["obstructed_pct"]["value"], 0)
+        self.assertEqual(status["metrics"]["obstructed_pct"]["availability"], "available")
+        self.assertEqual(status["metrics"]["obstructed_pct"]["observed_at"], "2026-09-27T12:00:00Z")
+        self.assertIs(status["obstruction"]["currently_obstructed"]["value"], False)
+
+    def test_unsupported_obstruction_map_does_not_hide_reported_fraction(self):
+        reading = self.fixture("online-idle.json")
+        reading.pop("currently_obstructed", None)
+        collector = self.collector(reading, obstruction_map=RuntimeError("unsupported RPC"))
+        async def collect():
+            await collector.poll_once()
+            await collector.obstruction_map_task
+        asyncio.run(collect())
+        status = self.status()
+        self.assertEqual(status["service_state"], "online")
+        self.assertEqual(status["metrics"]["obstructed_pct"]["value"], 1)
+        self.assertEqual(status["obstruction"]["currently_obstructed"]["availability"], "unavailable")
+        self.assertEqual(status["obstruction"]["signal_map"]["availability"], "unavailable")
+        self.assertEqual(status["obstruction"]["signal_map"]["reason"], "not_reported")
+
+    def test_reported_obstruction_grid_with_no_valid_samples_retains_provenance(self):
+        collector = self.collector(self.fixture("online-idle.json"),
+                                   obstruction_map=((-1.0, -1.0), (-1.0, -1.0)))
+
+        async def collect():
+            await collector.poll_once()
+            await collector.obstruction_map_task
+
+        asyncio.run(collect())
+        signal_map = self.status()["obstruction"]["signal_map"]
+        self.assertEqual(signal_map["availability"], "unavailable")
+        self.assertEqual(signal_map["reason"], "no_valid_samples")
+        self.assertEqual(signal_map["valid_cells"], 0)
+        self.assertIsNone(signal_map["cells"])
+        self.assertEqual(signal_map["source"], "starlink-grpc-core.obstruction_map")
+        self.assertEqual(signal_map["observed_at"], "2026-09-27T12:00:00Z")
+
+    def test_old_signal_samples_are_stale_while_live_status_remains_reachable(self):
+        reading = self.fixture("online-idle.json")
+        collector = self.collector(
+            reading, reading, reading,
+            obstruction_map=[((0.2, 0.8),), RuntimeError("map request failed"),
+                             RuntimeError("map request failed")],
+        )
+        async def collect():
+            for index in range(3):
+                if index:
+                    self.clock += timedelta(seconds=61)
+                await collector.poll_once()
+                await collector.obstruction_map_task
+
+        asyncio.run(collect())
+        status = self.status()
+        self.assertEqual(status["collection_state"], "reachable")
+        self.assertEqual(status["obstruction"]["signal_map"]["availability"], "stale")
+        self.assertEqual(status["obstruction"]["signal_map"]["observed_at"], "2026-09-27T12:00:00Z")
+        self.assertEqual(status["obstruction"]["signal_map"]["cells"], [[0.2, 0.8]])
+
+    def test_slow_optional_map_does_not_delay_fresh_status_polls(self):
+        started = threading.Event()
+        release = threading.Event()
+        collector = self.collector(self.fixture("online-idle.json"), self.fixture("online-idle.json"))
+
+        def slow_map():
+            started.set()
+            release.wait(timeout=3)
+            return ((0.4,),)
+
+        collector.telemetry.read_obstruction_map = slow_map
+
+        async def collect():
+            try:
+                await asyncio.wait_for(collector.poll_once(), timeout=1)
+                self.assertTrue(await asyncio.to_thread(started.wait, 1))
+                self.clock += timedelta(seconds=2)
+                await asyncio.wait_for(collector.poll_once(), timeout=1)
+                status = self.status()
+                self.assertEqual(status["collection_state"], "reachable")
+                self.assertEqual(status["age_seconds"], 0)
+                self.assertEqual(status["obstruction"]["signal_map"]["availability"], "unavailable")
+            finally:
+                release.set()
+                if collector.obstruction_map_task:
+                    await collector.obstruction_map_task
+
+        asyncio.run(collect())
 
     def test_supported_diagnostics_identify_dish_and_optional_router(self):
         reading = self.fixture("online-idle.json")

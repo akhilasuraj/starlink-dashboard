@@ -214,6 +214,22 @@ body {
   margin-bottom: 20px;
 }
 
+.snr-grid {
+  display: grid;
+  gap: 2px;
+  width: min(100%, 420px);
+  margin: 18px auto;
+}
+
+.snr-cell {
+  aspect-ratio: 1;
+  min-width: 2px;
+}
+
+.snr-cell.invalid {
+  background: #353535;
+}
+
 .progress-bar {
   width: 100%;
   height: 20px;

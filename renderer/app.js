@@ -8,6 +8,7 @@ let autoScrollLogs = true;
 let historyRange = "15m";
 let lastHistoryFetchRange = null;
 let lastHistoryFetchMs = 0;
+let lastSnrRenderKey = null;
 const HISTORY_REFRESH_MS = { "15m": 2000, "24h": 60000, "7d": 300000 };
 const HISTORY_RANGE_LABELS = { "15m": "15-minute", "24h": "24-hour", "7d": "7-day" };
 
@@ -172,10 +173,43 @@ function renderStatus(status) {
 
   const obstruction = metrics.obstructed_pct;
   byId("obstruction-text").textContent = isReadingAvailable(obstruction)
-    ? `Obstructed: ${obstruction.value.toFixed(2)}%` : "Obstruction: Unavailable";
+    ? `Obstructed area reported: ${obstruction.value.toFixed(2)}%` : "Obstruction: Unavailable";
   byId("obstruction-meta").textContent = readingMeta(obstruction);
+  byId("obstruction-progress").hidden = !isReadingAvailable(obstruction);
   byId("obstruction-bar").style.width = isReadingAvailable(obstruction)
     ? `${Math.max(0, Math.min(obstruction.value, 100))}%` : "0%";
+  const obstructionDetails = status && status.obstruction || {};
+  const current = obstructionDetails.currently_obstructed;
+  const currentAvailable = current && ["available", "stale"].includes(current.availability) &&
+    hasSourceAndTime(current) && typeof current.value === "boolean";
+  byId("obstruction-current").textContent = currentAvailable
+    ? `Currently obstructed: ${current.value ? "Yes" : "No"}`
+    : "Currently obstructed: Unavailable";
+  byId("obstruction-current-meta").textContent = currentAvailable
+    ? `${current.availability === "stale" ? "Stale · " : ""}${current.source} · ${new Date(current.observed_at).toLocaleString()}`
+    : "Not reported by this dish or firmware";
+  const snr = obstructionDetails.signal_map;
+  const snrRenderKey = snr ? `${snr.source}|${snr.observed_at}|${snr.availability}|${snr.reason}|${snr.stale}` : "unavailable";
+  if (snrRenderKey === lastSnrRenderKey) return;
+  lastSnrRenderKey = snrRenderKey;
+  const rows = snr && snr.cells;
+  const columns = Array.isArray(rows) && rows.length > 0 && Array.isArray(rows[0]) ? rows[0].length : 0;
+  const validMap = snr && ["available", "stale"].includes(snr.availability) &&
+    hasSourceAndTime(snr) && Array.isArray(rows) && rows.length <= 128 &&
+    columns > 0 && columns <= 128 && rows.every((row) => Array.isArray(row) && row.length === columns &&
+      row.every((cell) => cell === null || (typeof cell === "number" && Number.isFinite(cell) && cell >= 0 && cell <= 1))) &&
+    rows.some((row) => row.some((cell) => cell !== null));
+  const grid = byId("obstruction-snr-grid");
+  grid.innerHTML = validMap ? rows.flat().map((cell) => cell === null
+    ? '<span class="snr-cell invalid" title="No valid SNR sample"></span>'
+    : `<span class="snr-cell" style="background-color:hsl(${Math.round(cell * 120)} 75% 40%)" title="SNR ${cell.toFixed(2)}"></span>`).join("") : "";
+  grid.style.gridTemplateColumns = validMap ? `repeat(${columns}, minmax(0, 1fr))` : "";
+  const validCount = validMap ? rows.flat().filter((cell) => cell !== null).length : 0;
+  byId("obstruction-snr-meta").textContent = validMap
+    ? `${snr.availability === "stale" ? "Stale · " : ""}${snr.source} · ${new Date(snr.observed_at).toLocaleString()} · ${validCount} of ${rows.length * columns} valid SNR samples`
+    : snr && snr.reason === "no_valid_samples" && hasSourceAndTime(snr)
+      ? `${snr.stale ? "Stale · " : ""}Dish reported directional SNR samples, but no valid SNR samples · ${snr.source} · ${new Date(snr.observed_at).toLocaleString()}`
+      : "Directional SNR samples not reported by this dish or firmware";
 }
 
 function renderHistory(history) {

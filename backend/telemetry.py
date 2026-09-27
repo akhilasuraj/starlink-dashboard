@@ -30,11 +30,27 @@ class StarlinkTelemetry:
 
             if self._context is None:
                 self._context = starlink_grpc.ChannelContext(self.target)
-            status, _obstruction, alerts = starlink_grpc.status_data(
+            status, obstruction, alerts = starlink_grpc.status_data(
                 context=self._context
             )
             if not isinstance(status, dict):
                 raise TelemetryError("Unexpected status response")
+            valid_s = obstruction.get("valid_s") if isinstance(obstruction, dict) else None
+            fraction = status.get("fraction_obstructed")
+            current = status.get("currently_obstructed")
+            # The pinned client reads protobuf defaults even when obstruction_stats
+            # is absent. A nondefault value proves the message carried evidence;
+            # valid_s is used only as presence evidence, not as a time estimate.
+            obstruction_reported = current is True or any(
+                isinstance(value, (int, float)) and not isinstance(value, bool) and
+                0 < value < float("inf") for value in (valid_s, fraction)
+            )
+            if not obstruction_reported:
+                status = {**status}
+                if fraction == 0:
+                    status["fraction_obstructed"] = None
+                if current is False:
+                    status["currently_obstructed"] = None
             observed_alerts = {key: value for key, value in alerts.items()
                                if key.startswith("alert_") and isinstance(value, bool)} if isinstance(alerts, dict) else {}
             # Pinned status_data can expose all-false defaults even when the
@@ -74,6 +90,22 @@ class StarlinkTelemetry:
             raise TelemetryError("starlink-grpc-core is not installed") from error
         except Exception as error:
             self.close()
+            raise TelemetryError(str(error)) from error
+
+    def read_obstruction_map(self):
+        """Read directional SNR samples; these are not a camera image."""
+        try:
+            import starlink_grpc
+            # This optional RPC may take longer than a status poll. Give it a
+            # separate channel so failure cannot close the live-status channel.
+            context = starlink_grpc.ChannelContext(self.target)
+            try:
+                return starlink_grpc.obstruction_map(context=context)
+            finally:
+                context.close()
+        except ImportError as error:
+            raise TelemetryError("starlink-grpc-core is not installed") from error
+        except Exception as error:
             raise TelemetryError(str(error)) from error
 
     def read_dish_diagnostics(self):

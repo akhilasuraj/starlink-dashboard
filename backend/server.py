@@ -5,6 +5,7 @@ from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import logging
+import math
 from typing import Literal
 
 from fastapi import FastAPI
@@ -27,6 +28,9 @@ SOURCE = STATUS_SOURCE
 HISTORY_POLL_INTERVAL = 10
 DIAGNOSTICS_POLL_INTERVAL = 60
 DIAGNOSTICS_STALE_AFTER = 120
+OBSTRUCTION_MAP_POLL_INTERVAL = 60
+OBSTRUCTION_MAP_STALE_AFTER = 120
+OBSTRUCTION_MAP_SOURCE = "starlink-grpc-core.obstruction_map"
 ROUTE_GUIDANCE = (
     "Cannot reach the dish at 192.168.100.1:9200. Check that this PC is on "
     "the Starlink LAN. With bypass mode or a third-party router, add a static "
@@ -64,6 +68,10 @@ class Collector:
         self.dish_diagnostics_at = None
         self.router_diagnostics_at = None
         self.last_diagnostics_attempt = None
+        self.last_obstruction_map_attempt = None
+        self.obstruction_map_task = None
+        self.obstruction_map = None
+        self.obstruction_map_at = None
         self.observed_at = None
         self.collection_error = None
         self.collection_state = "collecting"
@@ -88,6 +96,7 @@ class Collector:
                 continuity_seconds=STALE_AFTER_SECONDS,
             )
             await self._refresh_diagnostics()
+            self._schedule_obstruction_map()
             if hasattr(self.telemetry, "read_history") and (
                 self.last_history_attempt is None or
                 (self.observed_at - self.last_history_attempt).total_seconds() >= HISTORY_POLL_INTERVAL or
@@ -139,6 +148,32 @@ class Collector:
                 setattr(self, f"{kind}_diagnostics", result)
                 setattr(self, f"{kind}_diagnostics_at", self.now())
 
+    def _schedule_obstruction_map(self):
+        reader = getattr(self.telemetry, "read_obstruction_map", None)
+        if not callable(reader) or (
+            self.obstruction_map_task is not None and not self.obstruction_map_task.done()
+        ) or (
+            self.last_obstruction_map_attempt is not None and
+            (self.observed_at - self.last_obstruction_map_attempt).total_seconds() < OBSTRUCTION_MAP_POLL_INTERVAL
+        ):
+            return
+        self.last_obstruction_map_attempt = self.observed_at
+        self.obstruction_map_task = asyncio.create_task(self._read_obstruction_map(reader))
+
+    async def _read_obstruction_map(self, reader):
+        try:
+            self.obstruction_map = await asyncio.to_thread(reader)
+            self.obstruction_map_at = self.now()
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            logger.info("Optional obstruction SNR samples unavailable: %s", error)
+
+    async def stop_optional_tasks(self):
+        if self.obstruction_map_task is not None and not self.obstruction_map_task.done():
+            self.obstruction_map_task.cancel()
+            await asyncio.gather(self.obstruction_map_task, return_exceptions=True)
+
     def _log(self, level, message):
         return {"timestamp": utc_text(self.now()), "level": level.upper(), "message": message}
 
@@ -178,6 +213,8 @@ class Collector:
         metrics = {}
         for name, (field, unit, divisor) in METRICS.items():
             value = number(raw.get(field), divisor)
+            if name == "obstructed_pct" and value is not None and not 0 <= value <= 100:
+                value = None
             metrics[name] = {
                 "value": value,
                 "unit": unit,
@@ -185,6 +222,50 @@ class Collector:
                 "observed_at": observed_at if value is not None else None,
                 "availability": "unavailable" if value is None else "stale" if stale else "available",
             }
+        current = raw.get("currently_obstructed")
+        current_available = isinstance(current, bool) and self.observed_at is not None
+        map_cells = None
+        valid_cells = 0
+        if isinstance(self.obstruction_map, (tuple, list)) and 0 < len(self.obstruction_map) <= 128:
+            try:
+                rows = [list(row) for row in self.obstruction_map]
+                columns = len(rows[0])
+                if 0 < columns <= 128 and all(len(row) == columns for row in rows):
+                    map_cells = []
+                    for row in rows:
+                        cells = []
+                        for cell in row:
+                            sample = float(cell) if not isinstance(cell, bool) else math.nan
+                            value = sample if math.isfinite(sample) and 0 <= sample <= 1 else None
+                            cells.append(value)
+                            valid_cells += value is not None
+                        map_cells.append(cells)
+            except (TypeError, ValueError, OverflowError):
+                map_cells = None
+                valid_cells = 0
+        map_available = valid_cells > 0 and self.obstruction_map_at is not None
+        map_reported = map_cells is not None and self.obstruction_map_at is not None
+        map_old = self.obstruction_map_at is None or (
+            now - self.obstruction_map_at).total_seconds() > OBSTRUCTION_MAP_STALE_AFTER
+        obstruction = {
+            "currently_obstructed": {
+                "value": current if current_available else None,
+                "source": SOURCE if current_available else None,
+                "observed_at": observed_at if current_available else None,
+                "availability": "unavailable" if not current_available else "stale" if stale else "available",
+            },
+            "signal_map": {
+                "cells": map_cells if map_available else None,
+                "valid_cells": valid_cells if map_available else 0,
+                "source": OBSTRUCTION_MAP_SOURCE if map_reported else None,
+                "observed_at": utc_text(self.obstruction_map_at) if map_reported else None,
+                "availability": "unavailable" if not map_available else
+                                "stale" if stale or map_old else "available",
+                "stale": bool(map_reported and (stale or map_old)),
+                "reason": None if map_available else
+                          "no_valid_samples" if map_reported else "not_reported",
+            },
+        }
         device = {}
         for name, field in DEVICE_FIELDS.items():
             official = text_reading(dish_details.get(field), DIAGNOSTICS_SOURCE, self.dish_diagnostics_at, dish_old)
@@ -270,6 +351,7 @@ class Collector:
             "device": device,
             "router": router,
             "alerts": alerts,
+            "obstruction": obstruction,
         }
 
     def history(self, range_name="15m"):
@@ -291,6 +373,7 @@ async def lifespan(app: FastAPI):
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+        await app.state.collector.stop_optional_tasks()
         app.state.collector.telemetry.close()
 
 

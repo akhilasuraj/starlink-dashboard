@@ -31,6 +31,38 @@ class TelemetryAdapterTests(unittest.TestCase):
             telemetry.close()
             self.assertTrue(contexts[0].closed)
 
+    def test_obstruction_defaults_without_presence_evidence_are_not_observations(self):
+        with patch.object(starlink_grpc, "ChannelContext"), patch.object(
+            starlink_grpc, "status_data",
+            return_value=({"state": "CONNECTED", "fraction_obstructed": 0.0,
+                           "currently_obstructed": False}, {"valid_s": 0.0}, {}),
+        ):
+            reading = StarlinkTelemetry().read_status()
+        self.assertIsNone(reading["fraction_obstructed"])
+        self.assertIsNone(reading["currently_obstructed"])
+
+    def test_observed_zero_obstruction_survives_with_valid_time_evidence(self):
+        with patch.object(starlink_grpc, "ChannelContext"), patch.object(
+            starlink_grpc, "status_data",
+            return_value=({"state": "CONNECTED", "fraction_obstructed": 0.0,
+                           "currently_obstructed": False}, {"valid_s": 3600.0}, {}),
+        ):
+            reading = StarlinkTelemetry().read_status()
+        self.assertEqual(reading["fraction_obstructed"], 0.0)
+        self.assertIs(reading["currently_obstructed"], False)
+
+    def test_positive_or_active_obstruction_is_evidence_even_without_valid_time(self):
+        for fraction, current in [(0.1, False), (0.0, True)]:
+            with self.subTest(fraction=fraction, current=current), patch.object(
+                starlink_grpc, "ChannelContext"
+            ), patch.object(starlink_grpc, "status_data", return_value=(
+                {"state": "CONNECTED", "fraction_obstructed": fraction,
+                 "currently_obstructed": current}, {}, {}
+            )):
+                reading = StarlinkTelemetry().read_status()
+                self.assertEqual(reading["fraction_obstructed"], fraction)
+                self.assertIs(reading["currently_obstructed"], current)
+
     def test_pinned_core_bulk_history_contract(self):
         context = Mock()
         general = {"samples": 2, "end_counter": 22}
@@ -42,6 +74,17 @@ class TelemetryAdapterTests(unittest.TestCase):
             self.assertEqual(telemetry.read_history(), (general, bulk))
             read.assert_called_once_with(900, context=context)
             telemetry.close()
+            context.close.assert_called_once()
+
+    def test_pinned_core_obstruction_map_reads_directional_snr_rows(self):
+        context = Mock()
+        rows = ((0.0, 0.5, -1.0), (1.0, 0.75, 0.25))
+        with patch.object(starlink_grpc, "ChannelContext", return_value=context), patch.object(
+            starlink_grpc, "obstruction_map", return_value=rows
+        ) as read:
+            telemetry = StarlinkTelemetry()
+            self.assertEqual(telemetry.read_obstruction_map(), rows)
+            read.assert_called_once_with(context=context)
             context.close.assert_called_once()
 
     def test_named_alerts_survive_the_pinned_status_adapter(self):

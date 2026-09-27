@@ -57,7 +57,14 @@ function desktop(response, history = { samples: [] }, withCharts = false, domRea
     getElementById(id) {
       if (!htmlIds.has(id)) return null;
       if (!elements.has(id)) {
-        elements.set(id, { textContent: "", style: {}, hidden: false, title: "", getContext() { return {}; }, addEventListener() {} });
+        const element = { textContent: "", style: {}, hidden: false, title: "", htmlWrites: 0,
+          getContext() { return {}; }, addEventListener() {} };
+        let html = "";
+        Object.defineProperty(element, "innerHTML", {
+          get() { return html; },
+          set(value) { html = value; element.htmlWrites += 1; },
+        });
+        elements.set(id, element);
       }
       return elements.get(id);
     },
@@ -104,6 +111,7 @@ function desktop(response, history = { samples: [] }, withCharts = false, domRea
     text(id) { return document.getElementById(id).textContent; },
     title(id) { return document.getElementById(id).title; },
     html(id) { return document.getElementById(id).innerHTML; },
+    htmlWrites(id) { return document.getElementById(id).htmlWrites; },
     hidden(id) { return document.getElementById(id).hidden; },
     charts,
     requests,
@@ -343,4 +351,68 @@ test("all-false community alert defaults do not appear as a confirmed clear stat
   await app.render();
   assert.equal(app.text("dish-alerts"), "Dish alerts unavailable");
   assert.match(app.text("device-capabilities"), /Dish alerts: unavailable/);
+});
+
+test("obstruction view distinguishes reported fraction from directional SNR samples", async () => {
+  const response = apiStatus("obstruction-supported");
+  const app = desktop(response);
+  await app.render();
+  assert.match(htmlSource, /data-tab="obstruction"/);
+  assert.equal(app.text("obstruction-text"), "Obstructed area reported: 12.50%");
+  assert.match(app.text("obstruction-meta"), /starlink-grpc-core\.status_data/);
+  assert.equal(app.text("obstruction-current"), "Currently obstructed: No");
+  assert.match(app.text("obstruction-current-meta"), /starlink-grpc-core\.status_data/);
+  assert.match(app.text("obstruction-snr-meta"), /starlink-grpc-core\.obstruction_map/);
+  assert.match(app.text("obstruction-snr-meta"), /5 of 6 valid/);
+  assert.equal((app.html("obstruction-snr-grid").match(/class="snr-cell/g) || []).length, 6);
+  assert.match(app.html("obstruction-snr-grid"), /snr-cell invalid/);
+  const gridWrites = app.htmlWrites("obstruction-snr-grid");
+  await app.render();
+  assert.equal(app.htmlWrites("obstruction-snr-grid"), gridWrites);
+  assert.match(htmlSource, /Directional SNR samples.*not an exact obstruction outline/i);
+  assert.doesNotMatch(htmlSource, /camera scan|serving.satellite count/i);
+});
+
+test("unsupported obstruction telemetry shows an explanation without a fabricated map", async () => {
+  const app = desktop(apiStatus("obstruction-unsupported"));
+  await app.render();
+  assert.equal(app.text("status"), "SERVICE ONLINE");
+  assert.equal(app.text("obstruction-text"), "Obstruction: Unavailable");
+  assert.equal(app.text("obstruction-current"), "Currently obstructed: Unavailable");
+  assert.equal(app.hidden("obstruction-progress"), true);
+  assert.match(app.text("obstruction-snr-meta"), /not reported by this dish or firmware/i);
+  assert.equal(app.html("obstruction-snr-grid"), "");
+});
+
+test("protobuf obstruction defaults show unavailable while an observed zero remains visible", async () => {
+  const app = desktop(apiStatus("obstruction-status-defaults"));
+  await app.render();
+  assert.equal(app.text("obstruction-text"), "Obstruction: Unavailable");
+  assert.equal(app.text("obstruction-current"), "Currently obstructed: Unavailable");
+  assert.equal(app.hidden("obstruction-progress"), true);
+  app.setStatus(apiStatus("obstruction-observed-zero"));
+  await app.render();
+  assert.equal(app.text("obstruction-text"), "Obstructed area reported: 0.00%");
+  assert.equal(app.text("obstruction-current"), "Currently obstructed: No");
+  assert.equal(app.hidden("obstruction-progress"), false);
+});
+
+test("reported grid with no valid SNR cells explains the invalid samples without drawing a map", async () => {
+  const response = apiStatus("obstruction-no-valid-samples");
+  assert.equal(response.obstruction.signal_map.reason, "no_valid_samples");
+  const app = desktop(response);
+  await app.render();
+  assert.match(app.text("obstruction-snr-meta"), /no valid SNR samples/i);
+  assert.match(app.text("obstruction-snr-meta"), /starlink-grpc-core\.obstruction_map/);
+  assert.doesNotMatch(app.text("obstruction-snr-meta"), /not reported by this dish or firmware/i);
+  assert.equal(app.html("obstruction-snr-grid"), "");
+});
+
+test("the obstruction view labels old directional samples stale while status remains live", async () => {
+  const app = desktop(apiStatus("obstruction-stale"));
+  await app.render();
+  assert.equal(app.text("status"), "SERVICE ONLINE");
+  assert.match(app.text("obstruction-snr-meta"), /^Stale · /);
+  assert.match(app.text("obstruction-snr-meta"), /5 of 6 valid/);
+  assert.match(app.text("obstruction-meta"), /starlink-grpc-core\.status_data/);
 });

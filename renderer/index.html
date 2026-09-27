@@ -27,6 +27,7 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="network">NETWORK</button>
         <button class="tab-btn" data-tab="statistics">STATISTICS</button>
+        <button class="tab-btn" data-tab="obstruction">OBSTRUCTION</button>
         <button class="tab-btn" data-tab="device">DEVICE</button>
         <button class="tab-btn" data-tab="logs">LOGS</button>
       </div>
@@ -119,15 +120,25 @@
           </div>
         </div>
 
-        <!-- Device Tab -->
-        <div id="device" class="tab-pane">
+        <!-- Obstruction Tab -->
+        <div id="obstruction" class="tab-pane">
           <div class="obstruction-info">
             <h3 id="obstruction-text">Obstruction: Unavailable</h3>
             <p class="reading-meta" id="obstruction-meta">Unavailable</p>
-            <div class="progress-bar">
+            <div id="obstruction-progress" class="progress-bar" hidden>
               <div id="obstruction-bar" class="progress-fill"></div>
             </div>
+            <p id="obstruction-current">Currently obstructed: Unavailable</p>
+            <p class="reading-meta" id="obstruction-current-meta">Unavailable</p>
+            <h3>Directional SNR samples</h3>
+            <p class="reading-meta">Directional SNR samples indicate received signal by direction; they are not an exact obstruction outline or a camera view.</p>
+            <p class="reading-meta" id="obstruction-snr-meta">Not reported by this dish or firmware</p>
+            <div id="obstruction-snr-grid" class="snr-grid" role="img" aria-label="Dish directional signal-to-noise ratio samples"></div>
           </div>
+        </div>
+
+        <!-- Device Tab -->
+        <div id="device" class="tab-pane">
           <div class="device-section">
             <h3>DETAILS</h3>
             <div class="device-row">

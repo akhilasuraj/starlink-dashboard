@@ -6,22 +6,28 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from unittest.mock import patch
+
+import starlink_grpc
 
 from fastapi.testclient import TestClient
 
 from backend.history import HistoryStore
 from backend.server import Collector, DishUnreachable, app
+from backend.telemetry import StarlinkTelemetry
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class FixtureTransport:
-    def __init__(self, *responses, history=None, dish_diagnostics=None, router_diagnostics=None):
+    def __init__(self, *responses, history=None, dish_diagnostics=None, router_diagnostics=None,
+                 obstruction_map=None):
         self.responses = iter(responses)
         self.history = history or ({"samples": 0, "end_counter": 0}, {})
         self.dish_diagnostics = iter(dish_diagnostics) if isinstance(dish_diagnostics, list) else dish_diagnostics
         self.router_diagnostics = iter(router_diagnostics) if isinstance(router_diagnostics, list) else router_diagnostics
+        self.obstruction_map = iter(obstruction_map) if isinstance(obstruction_map, list) else obstruction_map
 
     def read_status(self):
         response = next(self.responses)
@@ -44,9 +50,29 @@ class FixtureTransport:
             raise value
         return value
 
+    def read_obstruction_map(self):
+        value = next(self.obstruction_map) if hasattr(self.obstruction_map, "__next__") else self.obstruction_map
+        if isinstance(value, Exception):
+            raise value
+        return value
+
 
 def fixture(name):
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+
+
+def core_status_fixture(groups):
+    """Run a recorded core response through the real adapter before API collection."""
+    with patch.object(starlink_grpc, "ChannelContext"), patch.object(
+        starlink_grpc, "status_data", return_value=(
+            groups["status"], groups["obstruction_detail"], groups["alert_detail"]
+        ),
+    ):
+        telemetry = StarlinkTelemetry()
+        try:
+            return telemetry.read_status()
+        finally:
+            telemetry.close()
 
 
 def main(scenario, endpoint="status", range_name="15m"):
@@ -70,7 +96,19 @@ def main(scenario, endpoint="status", range_name="15m"):
         "community-alerts-all-clear": [{**fixture("online-idle.json"),
                                         "alert_details": {"alert_motors_stuck": False,
                                                           "alert_obstructed": False}}],
+        "obstruction-supported": [{**fixture("online-idle.json"),
+                                    "fraction_obstructed": 0.125,
+                                    "currently_obstructed": False}],
+        "obstruction-no-valid-samples": [fixture("online-idle.json")],
+        "obstruction-stale": [fixture("online-idle.json")] * 3,
+        "obstruction-unsupported": [{key: value for key, value in fixture("online-idle.json").items()
+                                     if key not in ("fraction_obstructed", "currently_obstructed") }],
     }
+    if scenario in ("obstruction-status-defaults", "obstruction-observed-zero"):
+        groups = fixture("obstruction-defaults.json")
+        if scenario == "obstruction-observed-zero":
+            groups["obstruction_detail"]["valid_s"] = 3600.0
+        readings[scenario] = [core_status_fixture(groups)]
     if scenario not in readings:
         raise ValueError(f"Unknown fixture scenario: {scenario}")
     with tempfile.TemporaryDirectory() as temporary:
@@ -97,16 +135,34 @@ def main(scenario, endpoint="status", range_name="15m"):
                      "software_version": "router-firmware"} if scenario == "device-details" else
                     RuntimeError("No Starlink router") if scenario == "router-unavailable" else None
                 ),
+                obstruction_map=(
+                    ((0.0, 0.5, -1.0), (1.0, 0.75, 0.25)) if scenario == "obstruction-supported"
+                    else ((-1.0, -1.0), (-1.0, -1.0)) if scenario == "obstruction-no-valid-samples"
+                    else [((0.0, 0.5, -1.0), (1.0, 0.75, 0.25)),
+                          RuntimeError("map request failed"), RuntimeError("map request failed")]
+                    if scenario == "obstruction-stale"
+                    else RuntimeError("Map unsupported") if scenario == "obstruction-unsupported" else None
+                ),
             ),
             now=lambda: clock[0],
             history_store=HistoryStore(Path(temporary) / "history.sqlite3"),
         )
-        asyncio.run(app.state.collector.poll_once())
+        async def poll_and_settle():
+            await app.state.collector.poll_once()
+            if app.state.collector.obstruction_map_task:
+                await app.state.collector.obstruction_map_task
+
+        asyncio.run(poll_and_settle())
         if scenario == "stale-diagnostics":
             clock[0] += timedelta(seconds=61)
-            asyncio.run(app.state.collector.poll_once())
+            asyncio.run(poll_and_settle())
             clock[0] += timedelta(seconds=61)
-            asyncio.run(app.state.collector.poll_once())
+            asyncio.run(poll_and_settle())
+        if scenario == "obstruction-stale":
+            clock[0] += timedelta(seconds=61)
+            asyncio.run(poll_and_settle())
+            clock[0] += timedelta(seconds=61)
+            asyncio.run(poll_and_settle())
         if scenario == "range-views":
             store = app.state.collector.history_store
             old = clock[0] - timedelta(days=6)
@@ -117,12 +173,12 @@ def main(scenario, endpoint="status", range_name="15m"):
             store.record_outage_state("ut-fixture", "CONNECTED", middle + timedelta(seconds=2), offline=False, continuity_seconds=6)
         if scenario == "reported-outage":
             clock[0] += timedelta(seconds=2)
-            asyncio.run(app.state.collector.poll_once())
+            asyncio.run(poll_and_settle())
             clock[0] += timedelta(seconds=2)
-            asyncio.run(app.state.collector.poll_once())
+            asyncio.run(poll_and_settle())
         if scenario in ("outage-boundary", "outage-recovery-in-window"):
             clock[0] += timedelta(seconds=4)
-            asyncio.run(app.state.collector.poll_once())
+            asyncio.run(poll_and_settle())
         if scenario == "outage-recovery-in-window":
             clock[0] += timedelta(minutes=14, seconds=58)
         if scenario == "stale":
