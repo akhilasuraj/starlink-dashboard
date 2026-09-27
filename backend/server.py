@@ -12,9 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 try:
     from backend.history import HistoryStore, STATUS_SOURCE, default_history_path, finite_number as number, utc_text
+    from backend.official_device import SOURCE as DIAGNOSTICS_SOURCE
     from backend.telemetry import DishUnreachable, StarlinkTelemetry, TelemetryError
 except ModuleNotFoundError:
     from history import HistoryStore, STATUS_SOURCE, default_history_path, finite_number as number, utc_text
+    from official_device import SOURCE as DIAGNOSTICS_SOURCE
     from telemetry import DishUnreachable, StarlinkTelemetry, TelemetryError
 
 
@@ -23,6 +25,8 @@ POLL_INTERVAL = 2
 STALE_AFTER_SECONDS = 6
 SOURCE = STATUS_SOURCE
 HISTORY_POLL_INTERVAL = 10
+DIAGNOSTICS_POLL_INTERVAL = 60
+DIAGNOSTICS_STALE_AFTER = 120
 ROUTE_GUIDANCE = (
     "Cannot reach the dish at 192.168.100.1:9200. Check that this PC is on "
     "the Starlink LAN. With bypass mode or a third-party router, add a static "
@@ -55,6 +59,11 @@ class Collector:
         self.last_history_attempt = None
         self.history_due_on_reconnect = True
         self.last_status = None
+        self.dish_diagnostics = None
+        self.router_diagnostics = None
+        self.dish_diagnostics_at = None
+        self.router_diagnostics_at = None
+        self.last_diagnostics_attempt = None
         self.observed_at = None
         self.collection_error = None
         self.collection_state = "collecting"
@@ -78,6 +87,7 @@ class Collector:
                 offline=dish_state in OFFLINE_DISH_STATES,
                 continuity_seconds=STALE_AFTER_SECONDS,
             )
+            await self._refresh_diagnostics()
             if hasattr(self.telemetry, "read_history") and (
                 self.last_history_attempt is None or
                 (self.observed_at - self.last_history_attempt).total_seconds() >= HISTORY_POLL_INTERVAL or
@@ -107,6 +117,28 @@ class Collector:
             self.logs.append(self._log("error", "Collector could not read dish status"))
             logger.exception("Collector could not read dish status")
 
+    async def _refresh_diagnostics(self):
+        if self.last_diagnostics_attempt is not None and (
+            self.observed_at - self.last_diagnostics_attempt
+        ).total_seconds() < DIAGNOSTICS_POLL_INTERVAL:
+            return
+        self.last_diagnostics_attempt = self.observed_at
+        readers = [("dish", getattr(self.telemetry, "read_dish_diagnostics", None)),
+                   ("router", getattr(self.telemetry, "read_router_diagnostics", None))]
+        available = [(kind, reader) for kind, reader in readers if callable(reader)]
+        if not available:
+            return
+        results = await asyncio.gather(
+            *(asyncio.to_thread(reader) for _, reader in available), return_exceptions=True
+        )
+        for (kind, _), result in zip(available, results):
+            if isinstance(result, Exception):
+                logger.info("Optional %s diagnostics unavailable: %s", kind, result)
+                continue
+            if isinstance(result, dict):
+                setattr(self, f"{kind}_diagnostics", result)
+                setattr(self, f"{kind}_diagnostics_at", self.now())
+
     def _log(self, level, message):
         return {"timestamp": utc_text(self.now()), "level": level.upper(), "message": message}
 
@@ -130,6 +162,19 @@ class Collector:
         )
         service_state = last_known_service if state == "reachable" else "unknown"
         observed_at = utc_text(self.observed_at) if self.observed_at else None
+        def text_reading(value, source, captured_at, old=False):
+            available = isinstance(value, str) and bool(value.strip()) and captured_at is not None
+            return {
+                "value": value if available else None,
+                "source": source if available else None,
+                "observed_at": utc_text(captured_at) if available else None,
+                "availability": "unavailable" if not available else "stale" if stale or old else "available",
+            }
+
+        dish_details = self.dish_diagnostics if isinstance(self.dish_diagnostics, dict) else {}
+        router_details = self.router_diagnostics if isinstance(self.router_diagnostics, dict) else {}
+        dish_old = self.dish_diagnostics_at is None or (now - self.dish_diagnostics_at).total_seconds() > DIAGNOSTICS_STALE_AFTER
+        router_old = self.router_diagnostics_at is None or (now - self.router_diagnostics_at).total_seconds() > DIAGNOSTICS_STALE_AFTER
         metrics = {}
         for name, (field, unit, divisor) in METRICS.items():
             value = number(raw.get(field), divisor)
@@ -142,14 +187,58 @@ class Collector:
             }
         device = {}
         for name, field in DEVICE_FIELDS.items():
-            value = raw.get(field)
-            available = isinstance(value, str) and bool(value.strip())
-            device[name] = {
-                "value": value if available else None,
-                "source": SOURCE if available else None,
-                "observed_at": observed_at if available else None,
-                "availability": "unavailable" if not available else "stale" if stale else "available",
-            }
+            official = text_reading(dish_details.get(field), DIAGNOSTICS_SOURCE, self.dish_diagnostics_at, dish_old)
+            community = text_reading(raw.get(field), SOURCE, self.observed_at)
+            device[name] = (official if official["availability"] == "available" else
+                            community if community["availability"] != "unavailable" else official)
+        router = {
+            name: text_reading(router_details.get(field), DIAGNOSTICS_SOURCE,
+                               self.router_diagnostics_at, router_old)
+            for name, field in DEVICE_FIELDS.items()
+        }
+        official_alerts = dish_details.get("alerts")
+        if not isinstance(official_alerts, dict):
+            official_alerts = {}
+        official_alerts = {key: value for key, value in official_alerts.items()
+                           if isinstance(key, str) and isinstance(value, bool)}
+        raw_alerts = raw.get("alert_details")
+        if not isinstance(raw_alerts, dict):
+            raw_alerts = {}
+        community_alerts = {key.removeprefix("alert_"): value for key, value in raw_alerts.items()
+                            if isinstance(key, str) and key.startswith("alert_") and isinstance(value, bool)}
+        if not any(community_alerts.values()):
+            community_alerts = {}
+        if official_alerts and not dish_old:
+            alert_values, alert_source, alert_at, alert_old = official_alerts, DIAGNOSTICS_SOURCE, self.dish_diagnostics_at, False
+        elif community_alerts:
+            alert_values, alert_source, alert_at, alert_old = community_alerts, SOURCE, self.observed_at, False
+        elif official_alerts:
+            alert_values, alert_source, alert_at, alert_old = official_alerts, DIAGNOSTICS_SOURCE, self.dish_diagnostics_at, True
+        else:
+            alert_values, alert_source, alert_at, alert_old = {}, None, None, False
+        alert_time = utc_text(alert_at) if alert_at else None
+        alert_availability = "unavailable" if not alert_values else "stale" if stale or alert_old else "available"
+        alerts = {
+            "availability": alert_availability,
+            "source": alert_source,
+            "observed_at": alert_time,
+            "items": [{"code": code, "active": active, "source": alert_source,
+                       "observed_at": alert_time, "availability": alert_availability}
+                      for code, active in sorted(alert_values.items())],
+        }
+        dish_diagnostics_reported = bool(self.dish_diagnostics_at and (
+            any(isinstance(dish_details.get(field), str) and dish_details[field].strip()
+                for field in DEVICE_FIELDS.values()) or official_alerts))
+        router_diagnostics_reported = bool(self.router_diagnostics_at and any(
+            isinstance(router_details.get(field), str) and router_details[field].strip()
+            for field in DEVICE_FIELDS.values()))
+        capability_states = {
+            "dish_diagnostics": "unavailable" if not dish_diagnostics_reported else
+                                "stale" if stale or dish_old else "available",
+            "router_diagnostics": "unavailable" if not router_diagnostics_reported else
+                                  "stale" if stale or router_old else "available",
+            "dish_alerts": alert_availability,
+        }
         status_text = {
             "collecting": "Collecting",
             "dish_unreachable": "Dish unreachable",
@@ -171,9 +260,16 @@ class Collector:
             "stale": stale,
             "guidance": ROUTE_GUIDANCE if state == "dish_unreachable" else None,
             "collection_error": self.collection_error,
-            "capabilities": {name: metric["availability"] != "unavailable" for name, metric in metrics.items()},
+            "capabilities": {
+                **{name: metric["availability"] != "unavailable" for name, metric in metrics.items()},
+                **{f"dish_{name}": value["availability"] != "unavailable" for name, value in device.items()},
+                **{name: availability == "available" for name, availability in capability_states.items()},
+            },
+            "capability_states": capability_states,
             "metrics": metrics,
             "device": device,
+            "router": router,
+            "alerts": alerts,
         }
 
     def history(self, range_name="15m"):

@@ -285,6 +285,13 @@ body {
   margin-bottom: 15px;
 }
 
+.alert-summary {
+  margin-top: 8px;
+  color: #ffd600;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .stat-item-chart {
   height: 40px;
   margin-top: 10px;

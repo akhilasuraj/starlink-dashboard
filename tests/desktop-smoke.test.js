@@ -102,6 +102,7 @@ function desktop(response, history = { samples: [] }, withCharts = false, domRea
   return {
     async render() { await vm.runInContext("updateData()", context); },
     text(id) { return document.getElementById(id).textContent; },
+    title(id) { return document.getElementById(id).title; },
     html(id) { return document.getElementById(id).innerHTML; },
     hidden(id) { return document.getElementById(id).hidden; },
     charts,
@@ -299,4 +300,47 @@ test("switching to a slow 7-day view clears the old chart and labels while it lo
   finishWeek(apiHistory("range-views", "7d"));
   await switching;
   assert.match(app.text("history-window"), /7-day window/);
+});
+
+test("device view shows official dish and optional router details with reported alerts", async () => {
+  const app = desktop(apiStatus("device-details"));
+  await app.render();
+  assert.equal(app.text("hardware"), "rev-official");
+  assert.match(app.title("hardware"), /SpaceX Device API GetDiagnostics/);
+  assert.equal(app.text("router-id"), "Router-fixture");
+  assert.equal(app.text("router-hardware"), "router-rev");
+  assert.equal(app.text("router-software"), "router-firmware");
+  assert.match(app.text("dish-alerts"), /slow ethernet speeds/i);
+  assert.match(app.text("device-capabilities"), /Router diagnostics: available/);
+  assert.match(htmlSource, /GPS reception · satellites/);
+});
+
+test("missing router and alert observations are unavailable while dish stays online", async () => {
+  const app = desktop(apiStatus("router-unavailable"));
+  await app.render();
+  assert.equal(app.text("status"), "SERVICE ONLINE");
+  assert.equal(app.text("hardware"), "rev-official");
+  assert.equal(app.text("router-id"), "Unavailable");
+  assert.equal(app.text("dish-alerts"), "Dish alerts unavailable");
+  assert.equal(app.text("gps-sats"), "Unavailable");
+  assert.match(app.text("device-capabilities"), /Router diagnostics: unavailable/);
+});
+
+test("old diagnostics stay visible as stale after router and dish checks fail", async () => {
+  const app = desktop(apiStatus("stale-diagnostics"));
+  await app.render();
+  assert.equal(app.text("status"), "SERVICE ONLINE");
+  assert.equal(app.text("router-id"), "Router-fixture");
+  assert.match(app.title("router-id"), /^Stale/);
+  assert.match(app.text("device-capabilities"), /Dish diagnostics: stale/);
+  assert.match(app.text("device-capabilities"), /Router diagnostics: stale/);
+  assert.match(app.text("device-capabilities"), /Dish alerts: stale/);
+  assert.match(app.text("dish-alerts-meta"), /^Stale/);
+});
+
+test("all-false community alert defaults do not appear as a confirmed clear state", async () => {
+  const app = desktop(apiStatus("community-alerts-all-clear"));
+  await app.render();
+  assert.equal(app.text("dish-alerts"), "Dish alerts unavailable");
+  assert.match(app.text("device-capabilities"), /Dish alerts: unavailable/);
 });

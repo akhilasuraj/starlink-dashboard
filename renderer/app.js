@@ -82,7 +82,7 @@ function setMetric(id, reading, format = (value) => value.toFixed(1)) {
   if (meta) meta.textContent = readingMeta(reading);
 }
 
-function setDevice(id, reading) {
+function setDevice(id, reading, unavailableLabel = "Not reported by device") {
   const element = byId(id);
   if (!element) return;
   const available = reading && (reading.availability === "available" || reading.availability === "stale") &&
@@ -91,7 +91,7 @@ function setDevice(id, reading) {
   element.textContent = available ? reading.value : "Unavailable";
   element.title = available
     ? `${reading.availability === "stale" ? "Stale · " : ""}${reading.source} · ${new Date(reading.observed_at).toLocaleString()}`
-    : "Not reported by the dish";
+    : unavailableLabel;
 }
 
 function formatUptime(seconds) {
@@ -145,6 +145,30 @@ function renderStatus(status) {
   setDevice("dish-id", device.id);
   setDevice("hardware", device.hardware);
   setDevice("software", device.software);
+  const router = status && status.router || {};
+  setDevice("router-id", router.id, "Starlink router unavailable");
+  setDevice("router-hardware", router.hardware, "Starlink router unavailable");
+  setDevice("router-software", router.software, "Starlink router unavailable");
+  const capabilities = status && status.capabilities || {};
+  const capabilityStates = status && status.capability_states || {};
+  const capabilityLabel = (name) => ["available", "stale", "unavailable"].includes(capabilityStates[name])
+    ? capabilityStates[name] : capabilities[name] === true ? "available" : "unavailable";
+  byId("device-capabilities").textContent = [
+    `Dish diagnostics: ${capabilityLabel("dish_diagnostics")}`,
+    `Router diagnostics: ${capabilityLabel("router_diagnostics")}`,
+    `Dish alerts: ${capabilityLabel("dish_alerts")}`,
+  ].join(" · ");
+  const alerts = status && status.alerts;
+  const validAlerts = alerts && (alerts.availability === "available" || alerts.availability === "stale") &&
+    hasSourceAndTime(alerts) && Array.isArray(alerts.items) && alerts.items.length > 0 &&
+    alerts.items.every((item) => item && typeof item.code === "string" && typeof item.active === "boolean");
+  const activeAlerts = validAlerts ? alerts.items.filter((item) => item.active) : [];
+  byId("dish-alerts").textContent = !validAlerts ? "Dish alerts unavailable" : activeAlerts.length
+    ? activeAlerts.map((item) => item.code.replaceAll("_", " ")).join(" · ")
+    : "No active dish alerts reported";
+  byId("dish-alerts-meta").textContent = validAlerts
+    ? `${alerts.availability === "stale" ? "Stale · " : ""}${alerts.source} · ${new Date(alerts.observed_at).toLocaleString()}`
+    : "Not reported by this dish or firmware";
 
   const obstruction = metrics.obstructed_pct;
   byId("obstruction-text").textContent = isReadingAvailable(obstruction)

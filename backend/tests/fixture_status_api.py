@@ -17,9 +17,11 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class FixtureTransport:
-    def __init__(self, *responses, history=None):
+    def __init__(self, *responses, history=None, dish_diagnostics=None, router_diagnostics=None):
         self.responses = iter(responses)
         self.history = history or ({"samples": 0, "end_counter": 0}, {})
+        self.dish_diagnostics = iter(dish_diagnostics) if isinstance(dish_diagnostics, list) else dish_diagnostics
+        self.router_diagnostics = iter(router_diagnostics) if isinstance(router_diagnostics, list) else router_diagnostics
 
     def read_status(self):
         response = next(self.responses)
@@ -29,6 +31,18 @@ class FixtureTransport:
 
     def read_history(self):
         return self.history
+
+    def read_dish_diagnostics(self):
+        value = next(self.dish_diagnostics) if hasattr(self.dish_diagnostics, "__next__") else self.dish_diagnostics
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+    def read_router_diagnostics(self):
+        value = next(self.router_diagnostics) if hasattr(self.router_diagnostics, "__next__") else self.router_diagnostics
+        if isinstance(value, Exception):
+            raise value
+        return value
 
 
 def fixture(name):
@@ -47,6 +61,15 @@ def main(scenario, endpoint="status", range_name="15m"):
         "outage-boundary": [fixture("service-offline.json"), fixture("online-idle.json")],
         "outage-recovery-in-window": [fixture("service-offline.json"), fixture("online-idle.json")],
         "range-views": [fixture("online-idle.json")],
+        "device-details": [{**fixture("online-idle.json"),
+                            "alert_details": {"alert_motors_stuck": False,
+                                              "alert_slow_ethernet_speeds": True}}],
+        "router-unavailable": [{key: value for key, value in fixture("online-idle.json").items()
+                                if key not in ("gps_sats", "hardware_version")}],
+        "stale-diagnostics": [fixture("online-idle.json")] * 3,
+        "community-alerts-all-clear": [{**fixture("online-idle.json"),
+                                        "alert_details": {"alert_motors_stuck": False,
+                                                          "alert_obstructed": False}}],
     }
     if scenario not in readings:
         raise ValueError(f"Unknown fixture scenario: {scenario}")
@@ -56,11 +79,34 @@ def main(scenario, endpoint="status", range_name="15m"):
             FixtureTransport(
                 *readings[scenario],
                 history=(history["general"], history["bulk"]) if history else None,
+                dish_diagnostics=(
+                    [{"id": "ut-official", "hardware_version": "rev-official",
+                      "alerts": {"motors_stuck": True}}, RuntimeError("timeout"), RuntimeError("timeout")]
+                    if scenario == "stale-diagnostics" else
+                    {"id": "ut-official", "hardware_version": "rev-official",
+                     "software_version": "firmware-official",
+                     "alerts": {"motors_stuck": False, "slow_ethernet_speeds": True}}
+                    if scenario == "device-details" else
+                    {"hardware_version": "rev-official"} if scenario == "router-unavailable" else None
+                ),
+                router_diagnostics=(
+                    [{"id": "Router-fixture", "hardware_version": "router-rev"},
+                     RuntimeError("timeout"), RuntimeError("timeout")]
+                    if scenario == "stale-diagnostics" else
+                    {"id": "Router-fixture", "hardware_version": "router-rev",
+                     "software_version": "router-firmware"} if scenario == "device-details" else
+                    RuntimeError("No Starlink router") if scenario == "router-unavailable" else None
+                ),
             ),
             now=lambda: clock[0],
             history_store=HistoryStore(Path(temporary) / "history.sqlite3"),
         )
         asyncio.run(app.state.collector.poll_once())
+        if scenario == "stale-diagnostics":
+            clock[0] += timedelta(seconds=61)
+            asyncio.run(app.state.collector.poll_once())
+            clock[0] += timedelta(seconds=61)
+            asyncio.run(app.state.collector.poll_once())
         if scenario == "range-views":
             store = app.state.collector.history_store
             old = clock[0] - timedelta(days=6)

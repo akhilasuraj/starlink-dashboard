@@ -97,6 +97,11 @@
               <div class="stat-item-subtitle" id="dish-uptime-meta">Unavailable</div>
             </div>
             <div class="stat-item">
+              <div class="stat-item-title">Dish alerts</div>
+              <div id="dish-alerts" class="alert-summary">Dish alerts unavailable</div>
+              <div id="dish-alerts-meta" class="reading-meta">Not reported by this dish</div>
+            </div>
+            <div class="stat-item">
               <div class="stat-item-title">Latency · last 15 minutes</div>
               <div class="quality-chart"><canvas id="latencyChart"></canvas></div>
             </div>
@@ -138,10 +143,18 @@
               <span id="software">--</span>
             </div>
             <div class="device-row">
-              <span>GPS satellites</span>
+              <span>GPS reception · satellites</span>
               <span id="gps-sats">--</span>
             </div>
-            <p class="reading-meta">Device readings share the observation time shown above. Unavailable means this status call did not provide a value.</p>
+            <p class="reading-meta">Hover over a value for its source and observation time. Unavailable means the device did not report it.</p>
+            <p id="device-capabilities" class="reading-meta">Dish diagnostics: unavailable · Router diagnostics: unavailable · Dish alerts: unavailable</p>
+          </div>
+          <div class="device-section">
+            <h3>OPTIONAL STARLINK ROUTER</h3>
+            <div class="device-row"><span>Router ID</span><span id="router-id">Unavailable</span></div>
+            <div class="device-row"><span>Hardware</span><span id="router-hardware">Unavailable</span></div>
+            <div class="device-row"><span>Software</span><span id="router-software">Unavailable</span></div>
+            <p class="reading-meta">Router details are unavailable with some network setups, including bypass mode and third-party routers.</p>
           </div>
           <div class="device-section">
             <h3>ALIGNMENT</h3>
