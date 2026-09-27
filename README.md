@@ -2,7 +2,7 @@
 
 A modern desktop application for monitoring your Starlink connection statistics in real-time.
 
-> Revival in progress: the live monitor now distinguishes dish reachability, dish-reported service state, and stale readings. History is still limited to recent in-memory polls, and the installer still needs a separate Python runtime. See [the implementation plan](docs/implementation-plan.md) for the remaining work.
+> Revival in progress: the live monitor distinguishes dish reachability, dish-reported service state, and stale readings. A local SQLite database now retains 15-minute traffic, latency, and loss views across restarts. The installer still needs a separate Python runtime. See [the implementation plan](docs/implementation-plan.md) for the remaining work.
 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -24,7 +24,7 @@ A modern desktop application for monitoring your Starlink connection statistics 
 
 ### Network Dashboard
 
-View real-time download/upload speeds with historical graphs.
+View current download/upload traffic and a 15-minute observed history. This is not a speed test.
 
 ### Device Information
 
@@ -182,7 +182,7 @@ starlink/
 The Python backend exposes the following REST API:
 
 - `GET /api/status` - Collection and service state, freshness, capabilities, and measured values
-- `GET /api/history` - Recent observed traffic polls with null gaps (up to 30; not durable yet)
+- `GET /api/history` - Persisted 15-minute traffic, latency, and loss samples, with source, capture time, estimated dish sample time, and uncollected gaps
 - `GET /api/logs` - Recent backend logs (last 200 entries)
 - `GET /health` - Health check endpoint
 
@@ -204,6 +204,8 @@ The Python backend exposes the following REST API:
 ### Development Notes
 
 - Backend polls Starlink every 2 seconds
+- Dish history is polled about every 10 seconds when available and stored in SQLite under the user's local app data directory. `STARLINK_DASHBOARD_DATA_DIR` overrides the data directory.
+- The dish history call has counters but no UTC timestamps. The API estimates each one-second sample time from the local poll time and labels that estimate separately from `observed_at`.
 - Frontend updates UI every 2 seconds
 - Logs update every 1 second when LOGS tab is active
 - Keeps last 200 log messages in memory

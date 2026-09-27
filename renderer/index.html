@@ -50,14 +50,17 @@
             </div>
           </div>
           <div class="graph-container">
+            <p id="history-window" class="reading-meta">Last 15 minutes · No observations yet</p>
+            <p id="traffic-explainer" class="reading-meta">Dish traffic is current usage, not a speed test or available capacity.</p>
             <canvas id="speedChart"></canvas>
-            <p class="reading-meta">Observed traffic from this app session. Missing polls are gaps.</p>
+            <p id="history-time-note" class="reading-meta">Waiting for history</p>
           </div>
         </div>
 
         <!-- Statistics Tab -->
         <div id="statistics" class="tab-pane">
           <div class="stats-list">
+            <p id="quality-window" class="reading-meta">Last 15 minutes · No observations yet</p>
             <div class="stat-item">
               <div class="stat-item-header">
                 <span class="stat-item-title">Current ping drop rate</span>
@@ -86,6 +89,14 @@
                 <span class="stat-large" id="dish-uptime">--</span>
               </div>
               <div class="stat-item-subtitle" id="dish-uptime-meta">Unavailable</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-title">Latency · last 15 minutes</div>
+              <div class="quality-chart"><canvas id="latencyChart"></canvas></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-title">Ping drop rate · last 15 minutes</div>
+              <div class="quality-chart"><canvas id="lossChart"></canvas></div>
             </div>
           </div>
         </div>

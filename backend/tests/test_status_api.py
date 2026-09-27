@@ -1,11 +1,13 @@
 import asyncio
 import json
+import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from backend.history import HistoryStore
 from backend.server import Collector, DishUnreachable, app
 
 
@@ -25,6 +27,8 @@ class FixtureTransport:
 
 class StatusApiTests(unittest.TestCase):
     def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
         self.client = TestClient(app)
         self.clock = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
 
@@ -32,7 +36,10 @@ class StatusApiTests(unittest.TestCase):
         return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
     def collector(self, *readings):
-        collector = Collector(FixtureTransport(*readings), now=lambda: self.clock)
+        collector = Collector(
+            FixtureTransport(*readings), now=lambda: self.clock,
+            history_store=HistoryStore(Path(self.temp.name) / "history.sqlite3"),
+        )
         app.state.collector = collector
         return collector
 
@@ -109,11 +116,12 @@ class StatusApiTests(unittest.TestCase):
         asyncio.run(collector.poll_once())
         response = self.client.get("/api/history")
         self.assertEqual(response.status_code, 200)
-        samples = response.json()["samples"]
-        self.assertEqual(samples[0]["download_mbps"], 0)
-        self.assertIsNone(samples[1]["download_mbps"])
-        self.assertIsNone(samples[1]["upload_mbps"])
-        self.assertIsNone(samples[1]["source"])
+        samples = [sample for sample in response.json()["samples"]
+                   if sample["at"] >= "2026-09-27T12:00:00Z"]
+        self.assertEqual(samples[0]["metrics"]["download_mbps"]["value"], 0)
+        self.assertIsNone(samples[1]["metrics"]["download_mbps"]["value"])
+        self.assertIsNone(samples[1]["metrics"]["upload_mbps"]["value"])
+        self.assertEqual(samples[1]["time_basis"], "uncollected")
 
 
 if __name__ == "__main__":

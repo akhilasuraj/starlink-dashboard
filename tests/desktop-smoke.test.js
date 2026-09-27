@@ -31,13 +31,22 @@ function apiStatus(scenario) {
   return JSON.parse(result.stdout);
 }
 
-function desktop(response) {
+function apiHistory(scenario) {
+  const result = spawnSync(python, ["-m", "backend.tests.fixture_status_api", scenario, "history"], {
+    cwd: path.join(__dirname, ".."), encoding: "utf8",
+  });
+  assert.equal(result.status, 0, `Fixture history API failed: ${result.stderr || result.error}`);
+  return JSON.parse(result.stdout);
+}
+
+function desktop(response, history = { samples: [] }, withCharts = false) {
   const elements = new Map();
+  const charts = [];
   const document = {
     getElementById(id) {
       if (!htmlIds.has(id)) return null;
       if (!elements.has(id)) {
-        elements.set(id, { textContent: "", style: {}, hidden: false, title: "" });
+        elements.set(id, { textContent: "", style: {}, hidden: false, title: "", getContext() { return {}; } });
       }
       return elements.get(id);
     },
@@ -50,16 +59,26 @@ function desktop(response) {
     console: { error() {} },
     fetch: async (url) => ({
       ok: true,
-      json: async () => url.endsWith("/api/status") ? response : { samples: [] },
+      json: async () => url.endsWith("/api/status") ? response : history,
     }),
+    Chart: withCharts ? class {
+      constructor(_context, configuration) {
+        this.data = configuration.data;
+        this.options = configuration.options;
+        charts.push(this);
+      }
+      update() {}
+    } : undefined,
     setInterval() {},
     Date,
   });
   vm.runInContext(appSource, context);
+  if (withCharts) vm.runInContext("initChart()", context);
   return {
     async render() { await vm.runInContext("updateData()", context); },
     text(id) { return document.getElementById(id).textContent; },
     hidden(id) { return document.getElementById(id).hidden; },
+    charts,
   };
 }
 
@@ -137,4 +156,28 @@ test("headline uses the API's source instead of a renderer constant", async () =
   const app = desktop(status("reachable", "online"));
   await app.render();
   assert.match(app.text("observed-at"), /Source: fixture-status-api/);
+});
+
+test("15-minute traffic, latency, and loss charts consume the persisted history API", async () => {
+  const history = apiHistory("history-quality");
+  const app = desktop(apiStatus("history-quality"), history, true);
+  await app.render();
+  assert.match(app.text("history-window"), /15-minute window · Observed/);
+  assert.match(app.text("history-time-note"), /estimated from the local poll time/);
+  assert.equal(app.charts.length, 3);
+  const [traffic, latency, loss] = app.charts;
+  assert.equal(traffic.data.datasets[0].label, "Current download traffic (Mbps)");
+  assert.equal(traffic.data.datasets[1].label, "Current upload traffic (Mbps)");
+  assert.equal(traffic.options.scales.y.title.text, "Mbps");
+  assert.equal(latency.data.datasets[0].label, "Latency (ms)");
+  assert.equal(latency.options.scales.y.title.text, "ms");
+  assert.equal(loss.data.datasets[0].label, "Ping drop rate (%)");
+  assert.equal(loss.options.scales.y.title.text, "%");
+  assert.match(htmlSource, /id="traffic-explainer"[^>]*>Dish traffic is current usage, not a speed test or available capacity\./);
+  assert.equal(traffic.options.scales.x.max - traffic.options.scales.x.min, 900_000);
+  assert.ok(traffic.data.datasets[0].data.some((point) => point.y === 0));
+  assert.ok(traffic.data.datasets[0].data.some((point) => point.y === null));
+  assert.ok(latency.data.datasets[0].data.some((point) => point.y === null));
+  assert.ok(loss.data.datasets[0].data.some((point) => point.y === 100));
+  assert.match(traffic.data.datasets[0].data.find((point) => point.y === 0).meta, /Estimated sample time/);
 });

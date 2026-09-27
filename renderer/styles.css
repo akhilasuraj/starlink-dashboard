@@ -151,6 +151,11 @@ body {
   min-height: 0;
 }
 
+.quality-chart {
+  height: 150px;
+  margin-top: 10px;
+}
+
 /* Visibility */
 .obstruction-info {
   text-align: center;

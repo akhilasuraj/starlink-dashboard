@@ -1,28 +1,47 @@
 const API_URL = "http://127.0.0.1:8000";
 
 let speedChart = null;
+let latencyChart = null;
+let lossChart = null;
 let currentTab = "network";
 let autoScrollLogs = true;
 
-function initChart() {
-  const canvas = document.getElementById("speedChart");
+function createHistoryChart(canvasId, datasets, unit) {
+  const canvas = document.getElementById(canvasId);
   if (!canvas || typeof Chart === "undefined") return;
-  speedChart = new Chart(canvas.getContext("2d"), {
+  return new Chart(canvas.getContext("2d"), {
     type: "line",
-    data: {
-      labels: [],
-      datasets: [
-        { label: "Download traffic (Mbps)", data: [], borderColor: "#ffffff", spanGaps: false, pointRadius: 0 },
-        { label: "Upload traffic (Mbps)", data: [], borderColor: "#999999", spanGaps: false, pointRadius: 0 },
-      ],
-    },
+    data: { datasets: datasets.map((dataset) => ({
+      ...dataset, data: [], spanGaps: false, pointRadius: 1, borderWidth: 2,
+    })) },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      scales: { y: { beginAtZero: true } },
+      parsing: false,
+      scales: {
+        x: { type: "linear", ticks: { callback: (value) => new Date(value).toLocaleTimeString() } },
+        y: { beginAtZero: true, title: { display: true, text: unit } },
+      },
+      plugins: { tooltip: { callbacks: {
+        title: (items) => items.length ? new Date(items[0].parsed.x).toLocaleString() : "",
+        afterBody: (items) => items.length && items[0].raw.meta ? items[0].raw.meta : "",
+      } } },
     },
   });
+}
+
+function initChart() {
+  speedChart = createHistoryChart("speedChart", [
+    { label: "Current download traffic (Mbps)", borderColor: "#ffffff" },
+    { label: "Current upload traffic (Mbps)", borderColor: "#999999" },
+  ], "Mbps");
+  latencyChart = createHistoryChart("latencyChart", [
+    { label: "Latency (ms)", borderColor: "#00c853" },
+  ], "ms");
+  lossChart = createHistoryChart("lossChart", [
+    { label: "Ping drop rate (%)", borderColor: "#ffd600" },
+  ], "%");
 }
 
 function byId(id) {
@@ -131,16 +150,53 @@ function renderStatus(status) {
 }
 
 function renderHistory(history) {
-  if (!speedChart) return;
   const samples = Array.isArray(history && history.samples) ? history.samples : [];
-  speedChart.data.labels = samples.map((sample) => sample && sample.observed_at || "");
-  speedChart.data.datasets[0].data = samples.map((sample) =>
-    hasSourceAndTime(sample) && typeof sample.download_mbps === "number" && Number.isFinite(sample.download_mbps)
-      ? sample.download_mbps : null);
-  speedChart.data.datasets[1].data = samples.map((sample) =>
-    hasSourceAndTime(sample) && typeof sample.upload_mbps === "number" && Number.isFinite(sample.upload_mbps)
-      ? sample.upload_mbps : null);
-  speedChart.update("none");
+  const coverage = history && history.coverage_start && history.coverage_end
+    ? `Observed ${new Date(history.coverage_start).toLocaleTimeString()}–${new Date(history.coverage_end).toLocaleTimeString()}`
+    : "No observed samples";
+  const duration = history && history.window_seconds === 900 ? "15-minute" : "History";
+  const windowText = `${duration} window · ${coverage}`;
+  byId("history-window").textContent = windowText;
+  byId("quality-window").textContent = windowText;
+  byId("history-time-note").textContent = history && history.time_note ||
+    "Sample times and sources unavailable";
+
+  function series(metricName, multiplier = 1) {
+    return samples.map((sample) => {
+      const x = Date.parse(sample && sample.at);
+      if (!Number.isFinite(x)) return null;
+      const reading = sample && sample.metrics && sample.metrics[metricName];
+      const valid = isReadingAvailable(reading);
+      const source = valid ? reading.source : "Uncollected or unavailable";
+      const captured = valid ? new Date(reading.observed_at).toLocaleString() : "";
+      const timeBasis = reading && reading.time_basis || sample.time_basis;
+      const basis = timeBasis === "estimated_from_poll" ? "Estimated sample time" :
+        timeBasis === "observed_poll" ? "Observed poll time" : "Uncollected";
+      return { x, y: valid ? reading.value * multiplier : null,
+        meta: `${source}${captured ? ` · Captured ${captured}` : ""} · ${basis}` };
+    }).filter(Boolean);
+  }
+
+  const start = Date.parse(history && history.window_start);
+  const end = Date.parse(history && history.window_end);
+  for (const chart of [speedChart, latencyChart, lossChart]) {
+    if (!chart) continue;
+    if (Number.isFinite(start)) chart.options.scales.x.min = start;
+    if (Number.isFinite(end)) chart.options.scales.x.max = end;
+  }
+  if (speedChart) {
+    speedChart.data.datasets[0].data = series("download_mbps");
+    speedChart.data.datasets[1].data = series("upload_mbps");
+    speedChart.update("none");
+  }
+  if (latencyChart) {
+    latencyChart.data.datasets[0].data = series("latency_ms");
+    latencyChart.update("none");
+  }
+  if (lossChart) {
+    lossChart.data.datasets[0].data = series("drop_rate", 100);
+    lossChart.update("none");
+  }
 }
 
 async function updateData() {

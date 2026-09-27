@@ -1,0 +1,9 @@
+{
+  "general": { "samples": 4, "end_counter": 104 },
+  "bulk": {
+    "downlink_throughput_bps": [0, 1000000, 2000000, 3000000],
+    "uplink_throughput_bps": [0, 100000, 200000, 300000],
+    "pop_ping_latency_ms": [35, null, 50, 40],
+    "pop_ping_drop_rate": [0, 1, 0, 0.1]
+  }
+}

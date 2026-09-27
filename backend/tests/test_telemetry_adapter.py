@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import starlink_grpc
 
@@ -29,6 +29,19 @@ class TelemetryAdapterTests(unittest.TestCase):
             read.assert_called_once_with(context=contexts[0])
             telemetry.close()
             self.assertTrue(contexts[0].closed)
+
+    def test_pinned_core_bulk_history_contract(self):
+        context = Mock()
+        general = {"samples": 2, "end_counter": 22}
+        bulk = {"downlink_throughput_bps": [0, 1_000_000]}
+        with patch.object(starlink_grpc, "ChannelContext", return_value=context), patch.object(
+            starlink_grpc, "history_bulk_data", return_value=(general, bulk)
+        ) as read:
+            telemetry = StarlinkTelemetry()
+            self.assertEqual(telemetry.read_history(), (general, bulk))
+            read.assert_called_once_with(-1, context=context)
+            telemetry.close()
+            context.close.assert_called_once()
 
 
 if __name__ == "__main__":

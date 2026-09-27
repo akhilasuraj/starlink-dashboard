@@ -47,6 +47,23 @@ class StarlinkTelemetry:
             self.close()
             raise TelemetryError(str(error)) from error
 
+    def read_history(self):
+        """Return the pinned core package's general and bulk history dictionaries."""
+        try:
+            import starlink_grpc
+
+            if self._context is None:
+                self._context = starlink_grpc.ChannelContext(self.target)
+            general, bulk = starlink_grpc.history_bulk_data(-1, context=self._context)
+            if not isinstance(general, dict) or not isinstance(bulk, dict):
+                raise TelemetryError("Unexpected history response")
+            return general, bulk
+        except ImportError as error:
+            raise TelemetryError("starlink-grpc-core is not installed") from error
+        except Exception as error:
+            self.close()
+            raise TelemetryError(str(error)) from error
+
     def close(self):
         if self._context is not None:
             self._context.close()

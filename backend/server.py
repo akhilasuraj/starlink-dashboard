@@ -5,21 +5,23 @@ from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import logging
-import math
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
+    from backend.history import HistoryStore, STATUS_SOURCE, default_history_path, finite_number as number, utc_text
     from backend.telemetry import DishUnreachable, StarlinkTelemetry, TelemetryError
 except ModuleNotFoundError:
+    from history import HistoryStore, STATUS_SOURCE, default_history_path, finite_number as number, utc_text
     from telemetry import DishUnreachable, StarlinkTelemetry, TelemetryError
 
 
 logger = logging.getLogger(__name__)
 POLL_INTERVAL = 2
 STALE_AFTER_SECONDS = 6
-SOURCE = "starlink-grpc-core.status_data"
+SOURCE = STATUS_SOURCE
+HISTORY_POLL_INTERVAL = 10
 ROUTE_GUIDANCE = (
     "Cannot reach the dish at 192.168.100.1:9200. Check that this PC is on "
     "the Starlink LAN. With bypass mode or a third-party router, add a static "
@@ -44,30 +46,21 @@ OFFLINE_DISH_STATES = {
 }
 
 
-def utc_text(value):
-    return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def number(value, divisor=1):
-    if isinstance(value, bool) or not isinstance(value, (float, int)):
-        return None
-    if not math.isfinite(value):
-        return None
-    return value / divisor
-
-
 class Collector:
-    def __init__(self, telemetry, now=None):
+    def __init__(self, telemetry, now=None, history_store=None):
         self.telemetry = telemetry
         self.now = now or (lambda: datetime.now(timezone.utc))
+        self.history_store = history_store
+        self.last_history_attempt = None
         self.last_status = None
         self.observed_at = None
         self.collection_error = None
         self.collection_state = "collecting"
-        self.samples = deque(maxlen=30)
         self.logs = deque(maxlen=200)
 
     async def poll_once(self):
+        if self.history_store is None:
+            self.history_store = HistoryStore(default_history_path())
         try:
             status = await asyncio.to_thread(self.telemetry.read_status)
             if not isinstance(status, dict):
@@ -76,12 +69,20 @@ class Collector:
             self.observed_at = self.now()
             self.collection_state = "reachable"
             self.collection_error = None
-            self.samples.append({
-                "observed_at": utc_text(self.observed_at),
-                "source": SOURCE,
-                "download_mbps": number(status.get("downlink_throughput_bps"), 1_000_000),
-                "upload_mbps": number(status.get("uplink_throughput_bps"), 1_000_000),
-            })
+            self.history_store.record_status(status, self.observed_at)
+            if hasattr(self.telemetry, "read_history") and (
+                self.last_history_attempt is None or
+                (self.observed_at - self.last_history_attempt).total_seconds() >= HISTORY_POLL_INTERVAL
+            ):
+                self.last_history_attempt = self.observed_at
+                try:
+                    general, bulk = await asyncio.to_thread(self.telemetry.read_history)
+                    self.history_store.ingest_dish_history(
+                        general, bulk, self.now(), status.get("id"), status.get("uptime")
+                    )
+                except Exception as error:
+                    self.logs.append(self._log("warning", "Dish history unavailable; using observed status polls"))
+                    logger.warning("Dish history unavailable: %s", error)
         except DishUnreachable as error:
             self.collection_state = "dish_unreachable"
             self.collection_error = str(error)
@@ -99,12 +100,7 @@ class Collector:
         return {"timestamp": utc_text(self.now()), "level": level.upper(), "message": message}
 
     def _record_gap(self):
-        self.samples.append({
-            "observed_at": utc_text(self.now()),
-            "source": None,
-            "download_mbps": None,
-            "upload_mbps": None,
-        })
+        self.history_store.record_gap(self.now())
 
     def snapshot(self):
         now = self.now()
@@ -168,7 +164,9 @@ class Collector:
         }
 
     def history(self):
-        return {"samples": list(self.samples), "retention": "up to 30 polls; not durable"}
+        if self.history_store is None:
+            self.history_store = HistoryStore(default_history_path())
+        return self.history_store.window(self.now(), 900)
 
 
 @asynccontextmanager
