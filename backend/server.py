@@ -52,6 +52,7 @@ class Collector:
         self.now = now or (lambda: datetime.now(timezone.utc))
         self.history_store = history_store
         self.last_history_attempt = None
+        self.history_due_on_reconnect = True
         self.last_status = None
         self.observed_at = None
         self.collection_error = None
@@ -70,15 +71,24 @@ class Collector:
             self.collection_state = "reachable"
             self.collection_error = None
             self.history_store.record_status(status, self.observed_at)
+            dish_state = status.get("state")
+            self.history_store.record_outage_state(
+                status.get("id"), dish_state, self.observed_at,
+                offline=dish_state in OFFLINE_DISH_STATES,
+                continuity_seconds=STALE_AFTER_SECONDS,
+            )
             if hasattr(self.telemetry, "read_history") and (
                 self.last_history_attempt is None or
-                (self.observed_at - self.last_history_attempt).total_seconds() >= HISTORY_POLL_INTERVAL
+                (self.observed_at - self.last_history_attempt).total_seconds() >= HISTORY_POLL_INTERVAL or
+                self.history_due_on_reconnect
             ):
                 self.last_history_attempt = self.observed_at
+                self.history_due_on_reconnect = False
                 try:
+                    history_poll_started_at = self.now()
                     general, bulk = await asyncio.to_thread(self.telemetry.read_history)
                     self.history_store.ingest_dish_history(
-                        general, bulk, self.now(), status.get("id"), status.get("uptime")
+                        general, bulk, history_poll_started_at, status.get("id"), status.get("uptime")
                     )
                 except Exception as error:
                     self.logs.append(self._log("warning", "Dish history unavailable; using observed status polls"))
@@ -100,6 +110,8 @@ class Collector:
         return {"timestamp": utc_text(self.now()), "level": level.upper(), "message": message}
 
     def _record_gap(self):
+        self.history_due_on_reconnect = True
+        self.history_store.interrupt_outage()
         self.history_store.record_gap(self.now())
 
     def snapshot(self):

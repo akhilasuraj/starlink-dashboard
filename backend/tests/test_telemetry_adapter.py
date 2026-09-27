@@ -39,7 +39,7 @@ class TelemetryAdapterTests(unittest.TestCase):
         ) as read:
             telemetry = StarlinkTelemetry()
             self.assertEqual(telemetry.read_history(), (general, bulk))
-            read.assert_called_once_with(-1, context=context)
+            read.assert_called_once_with(900, context=context)
             telemetry.close()
             context.close.assert_called_once()
 

@@ -43,11 +43,14 @@ def main(scenario, endpoint="status"):
         "dish-unreachable": [DishUnreachable("connection timed out")],
         "stale": [fixture("online-idle.json")],
         "history-quality": [fixture("online-idle.json")],
+        "reported-outage": [fixture("service-offline.json"), fixture("service-offline.json"), fixture("online-idle.json")],
+        "outage-boundary": [fixture("service-offline.json"), fixture("online-idle.json")],
+        "outage-recovery-in-window": [fixture("service-offline.json"), fixture("online-idle.json")],
     }
     if scenario not in readings:
         raise ValueError(f"Unknown fixture scenario: {scenario}")
     with tempfile.TemporaryDirectory() as temporary:
-        history = fixture("history-quality.json") if scenario == "history-quality" else None
+        history = fixture("history-quality.json") if scenario in ("history-quality", "reported-outage") else None
         app.state.collector = Collector(
             FixtureTransport(
                 *readings[scenario],
@@ -57,6 +60,16 @@ def main(scenario, endpoint="status"):
             history_store=HistoryStore(Path(temporary) / "history.sqlite3"),
         )
         asyncio.run(app.state.collector.poll_once())
+        if scenario == "reported-outage":
+            clock[0] += timedelta(seconds=2)
+            asyncio.run(app.state.collector.poll_once())
+            clock[0] += timedelta(seconds=2)
+            asyncio.run(app.state.collector.poll_once())
+        if scenario in ("outage-boundary", "outage-recovery-in-window"):
+            clock[0] += timedelta(seconds=4)
+            asyncio.run(app.state.collector.poll_once())
+        if scenario == "outage-recovery-in-window":
+            clock[0] += timedelta(minutes=14, seconds=58)
         if scenario == "stale":
             clock[0] += timedelta(seconds=10)
         response = TestClient(app).get(f"/api/{endpoint}")

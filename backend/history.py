@@ -67,6 +67,19 @@ class HistoryStore:
                 end_counter INTEGER,
                 boot_at TEXT
             )""")
+            db.execute("""CREATE TABLE IF NOT EXISTS outages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_id TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                first_observed_at TEXT NOT NULL,
+                last_confirmed_at TEXT NOT NULL,
+                recovery_observed_at TEXT,
+                end_state TEXT NOT NULL,
+                source TEXT NOT NULL
+            )""")
+            db.execute("CREATE INDEX IF NOT EXISTS outages_window ON outages(first_observed_at, last_confirmed_at)")
+            # A process restart leaves the actual end of a previously open outage unknown.
+            db.execute("UPDATE outages SET end_state='unobserved' WHERE end_state='open'")
             db.commit()
 
     def _connect(self):
@@ -95,6 +108,45 @@ class HistoryStore:
                 (f"gap:{timestamp}", timestamp, None, "uncollected", None,
                  None, None, None, None),
             )
+            db.commit()
+
+    def record_outage_state(self, device_id, reason, observed_at, *, offline, continuity_seconds):
+        """Record only dish-reported offline states; observation gaps never imply an outage."""
+        device_id = device_id if isinstance(device_id, str) and device_id else "unknown"
+        at = utc_text(observed_at)
+        with closing(self._connect()) as db:
+            db.execute(
+                "UPDATE outages SET end_state='unobserved' WHERE end_state='open' AND device_id<>?",
+                (device_id,),
+            )
+            open_event = db.execute(
+                "SELECT * FROM outages WHERE device_id=? AND end_state='open' ORDER BY id DESC LIMIT 1",
+                (device_id,),
+            ).fetchone()
+            if open_event is not None:
+                continuous = (observed_at - from_utc_text(open_event["last_confirmed_at"])).total_seconds() <= continuity_seconds
+                if offline and continuous and reason == open_event["reason"]:
+                    db.execute("UPDATE outages SET last_confirmed_at=? WHERE id=?", (at, open_event["id"]))
+                    db.commit()
+                    return
+                if not offline and reason == "CONNECTED" and continuous:
+                    db.execute(
+                        "UPDATE outages SET recovery_observed_at=?, end_state='recovered' WHERE id=?",
+                        (at, open_event["id"]),
+                    )
+                else:
+                    db.execute("UPDATE outages SET end_state='unobserved' WHERE id=?", (open_event["id"],))
+            if offline and isinstance(reason, str) and reason:
+                db.execute(
+                    "INSERT INTO outages(device_id,reason,first_observed_at,last_confirmed_at,end_state,source) "
+                    "VALUES (?,?,?,?,'open',?)",
+                    (device_id, reason, at, at, STATUS_SOURCE),
+                )
+            db.commit()
+
+    def interrupt_outage(self):
+        with closing(self._connect()) as db:
+            db.execute("UPDATE outages SET end_state='unobserved' WHERE end_state='open'")
             db.commit()
 
     def ingest_dish_history(self, general, bulk, captured_at, device_id, uptime):
@@ -140,7 +192,7 @@ class HistoryStore:
             inserted_times = []
             for index in range(count):
                 counter = end_counter - count + index + 1
-                estimated_at = utc_text(captured_at - timedelta(seconds=count - index - 1))
+                estimated_at = utc_text(captured_at - timedelta(seconds=count - index))
                 values = (
                     f"history:{device_id}:{epoch}:{counter}", estimated_at,
                     captured_text, "estimated_from_poll", HISTORY_SOURCE,
@@ -167,6 +219,11 @@ class HistoryStore:
             rows = db.execute(
                 "SELECT * FROM samples WHERE at>=? AND at<=? ORDER BY at, time_basis",
                 (start_text, end_text),
+            ).fetchall()
+            outages = db.execute(
+                "SELECT * FROM outages WHERE first_observed_at<=? AND "
+                "COALESCE(recovery_observed_at,last_confirmed_at)>=? ORDER BY first_observed_at",
+                (end_text, start_text),
             ).fetchall()
         grouped = []
         for row in rows:
@@ -196,6 +253,16 @@ class HistoryStore:
             "coverage_end": max(observed_times) if observed_times else None,
             "time_note": "Dish history sample times are estimated from the local poll time; the dish does not provide UTC timestamps.",
             "samples": samples,
+            "outages": [{
+                "id": event["id"],
+                "device_id": event["device_id"],
+                "reason": event["reason"],
+                "first_observed_at": event["first_observed_at"],
+                "last_confirmed_at": event["last_confirmed_at"],
+                "recovery_observed_at": event["recovery_observed_at"],
+                "end_state": event["end_state"],
+                "source": event["source"],
+            } for event in outages],
         }
 
     @staticmethod

@@ -7,6 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const appSource = fs.readFileSync(path.join(__dirname, "..", "renderer", "app.js"), "utf8");
 const htmlSource = fs.readFileSync(path.join(__dirname, "..", "renderer", "index.html"), "utf8");
+const cssSource = fs.readFileSync(path.join(__dirname, "..", "renderer", "styles.css"), "utf8");
 const htmlIds = new Set([...htmlSource.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
 const observedAt = "2026-09-27T12:00:00Z";
 const reading = (value, availability = "available") => ({
@@ -52,7 +53,15 @@ function desktop(response, history = { samples: [] }, withCharts = false) {
     },
     addEventListener() {},
     querySelectorAll() { return []; },
-    createElement() { return { textContent: "", innerHTML: "" }; },
+    createElement() {
+      return {
+        innerHTML: "",
+        set textContent(value) {
+          this.innerHTML = String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+        },
+      };
+    },
   };
   const context = vm.createContext({
     document,
@@ -77,6 +86,7 @@ function desktop(response, history = { samples: [] }, withCharts = false) {
   return {
     async render() { await vm.runInContext("updateData()", context); },
     text(id) { return document.getElementById(id).textContent; },
+    html(id) { return document.getElementById(id).innerHTML; },
     hidden(id) { return document.getElementById(id).hidden; },
     charts,
   };
@@ -180,4 +190,39 @@ test("15-minute traffic, latency, and loss charts consume the persisted history 
   assert.ok(latency.data.datasets[0].data.some((point) => point.y === null));
   assert.ok(loss.data.datasets[0].data.some((point) => point.y === 100));
   assert.match(traffic.data.datasets[0].data.find((point) => point.y === 0).meta, /Estimated sample time/);
+});
+
+test("dish-reported outage reason and recovery appear on the same 15-minute timeline", async () => {
+  const history = apiHistory("reported-outage");
+  assert.equal(history.outages.length, 1);
+  const app = desktop(apiStatus("reported-outage"), history, true);
+  await app.render();
+  assert.match(app.text("outage-window"), /15-minute window/);
+  assert.match(app.html("outage-list"), /NO_PINGS/);
+  assert.match(app.html("outage-list"), /Recovery observed/);
+  assert.match(app.html("outage-track"), /outage-segment/);
+  const width = Number(app.html("outage-track").match(/width:([\d.]+)%/)[1]);
+  assert.ok(Math.abs(width - 2 / 900 * 100) < 0.001);
+  assert.match(htmlSource, /id="outage-note"[^>]*>Blank time and collector gaps are not confirmed outages/i);
+});
+
+test("one offline observation remains a marker without painting time until recovery", async () => {
+  const history = apiHistory("outage-boundary");
+  const app = desktop(apiStatus("outage-boundary"), history, true);
+  await app.render();
+  assert.equal(history.outages[0].last_confirmed_at, history.outages[0].first_observed_at);
+  assert.notEqual(history.outages[0].recovery_observed_at, history.outages[0].last_confirmed_at);
+  assert.match(app.html("outage-track"), /width:0%/);
+  assert.match(cssSource, /\.outage-segment\s*\{[^}]*min-width:\s*3px/s);
+  assert.match(app.html("outage-list"), /Recovery observed/);
+});
+
+test("recovery in window does not paint an earlier confirmed outage at the window edge", async () => {
+  const history = apiHistory("outage-recovery-in-window");
+  assert.equal(history.outages.length, 1);
+  assert.ok(Date.parse(history.outages[0].last_confirmed_at) < Date.parse(history.window_start));
+  const app = desktop(apiStatus("outage-recovery-in-window"), history, true);
+  await app.render();
+  assert.equal(app.html("outage-track"), "");
+  assert.match(app.html("outage-list"), /Recovery observed/);
 });

@@ -156,6 +156,32 @@ body {
   margin-top: 10px;
 }
 
+.outage-track {
+  position: relative;
+  height: 18px;
+  margin: 12px 0;
+  background: #171717;
+  border: 1px solid #555;
+  border-radius: 3px;
+}
+
+.outage-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  background: #d50000;
+  border-radius: 2px;
+}
+
+.outage-list {
+  color: #ddd;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.outage-event { margin-top: 5px; }
+
 /* Visibility */
 .obstruction-info {
   text-align: center;

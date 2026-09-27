@@ -77,10 +77,12 @@ class HistoryApiTests(unittest.TestCase):
         collector = self.collector([ONLINE], [HISTORY])
         asyncio.run(collector.poll_once())
         history = self.history()
-        samples = self.observed(history)
+        samples = [sample for sample in self.observed(history)
+                   if sample["time_basis"] == "estimated_from_poll"]
         self.assertEqual(history["window_seconds"], 900)
         self.assertEqual(len(samples), 4)
-        self.assertEqual(samples[0]["at"], "2026-09-27T11:59:57Z")
+        self.assertEqual(samples[0]["at"], "2026-09-27T11:59:56Z")
+        self.assertEqual(samples[-1]["at"], "2026-09-27T11:59:59Z")
         self.assertEqual(samples[0]["observed_at"], "2026-09-27T12:00:00Z")
         self.assertEqual(samples[0]["time_basis"], "estimated_from_poll")
         self.assertEqual(samples[0]["metrics"]["download_mbps"], {
@@ -101,7 +103,7 @@ class HistoryApiTests(unittest.TestCase):
         asyncio.run(collector.poll_once())
         first = self.observed(self.history())
         self.assertEqual(len([sample for sample in first if sample["time_basis"] == "estimated_from_poll"]), 4)
-        self.assertEqual(len([sample for sample in first if sample["time_basis"] == "observed_poll"]), 1)
+        self.assertEqual(len([sample for sample in first if sample["time_basis"] == "observed_poll"]), 2)
         self.collector([], [], db=self.db)
         second = self.observed(self.history())
         self.assertEqual(second, first)
@@ -113,22 +115,25 @@ class HistoryApiTests(unittest.TestCase):
         })
         collector = self.collector([ONLINE], [partial])
         asyncio.run(collector.poll_once())
-        samples = self.observed(self.history())
+        samples = [sample for sample in self.observed(self.history())
+                   if sample["time_basis"] == "estimated_from_poll"]
         self.assertEqual(len(samples), 3)
         self.assertEqual(samples[0]["metrics"]["download_mbps"]["value"], 0)
         self.assertEqual(samples[1]["metrics"]["download_mbps"]["availability"], "unavailable")
         self.assertIsNone(samples[1]["metrics"]["latency_ms"]["value"])
-        self.assertEqual(samples[2]["metrics"]["latency_ms"]["value"], 41)
+        self.assertIsNone(samples[2]["metrics"]["latency_ms"]["value"])
 
     def test_partial_dish_history_preserves_status_latency_and_loss_at_same_time(self):
         partial = ({"samples": 1, "end_counter": 301}, {
             "downlink_throughput_bps": [2_000_000],
             "uplink_throughput_bps": [100_000],
         })
-        collector = self.collector([ONLINE], [partial])
-        asyncio.run(collector.poll_once())
+        store = HistoryStore(self.db)
+        store.record_status(ONLINE, self.clock - timedelta(seconds=1))
+        store.ingest_dish_history(*partial, self.clock, ONLINE["id"], ONLINE["uptime"])
+        self.collector([], [], db=self.db)
         at_capture = [sample for sample in self.observed(self.history())
-                      if sample["at"] == "2026-09-27T12:00:00Z"]
+                      if sample["at"] == "2026-09-27T11:59:59Z"]
         self.assertEqual(len(at_capture), 1)
         sample = at_capture[0]
         self.assertEqual(sample["metrics"]["download_mbps"]["value"], 2)
@@ -172,6 +177,101 @@ class HistoryApiTests(unittest.TestCase):
         self.assertEqual(samples[0]["time_basis"], "observed_poll")
         self.assertEqual(samples[0]["metrics"]["download_mbps"]["value"], 0)
         self.assertEqual(self.client.get("/api/status").json()["service_state"], "online")
+
+    def test_dish_reported_outage_is_one_persisted_interval_with_reason(self):
+        offline = {**ONLINE, "state": "NO_PINGS"}
+        collector = self.collector([offline, offline, ONLINE], [HISTORY])
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        outages = self.history()["outages"]
+        self.assertEqual(len(outages), 1)
+        event = outages[0]
+        self.assertEqual(event["reason"], "NO_PINGS")
+        self.assertEqual(event["source"], "starlink-grpc-core.status_data")
+        self.assertEqual(event["first_observed_at"], "2026-09-27T12:00:00Z")
+        self.assertEqual(event["last_confirmed_at"], "2026-09-27T12:00:02Z")
+        self.assertEqual(event["recovery_observed_at"], "2026-09-27T12:00:04Z")
+        self.assertEqual(event["end_state"], "recovered")
+        self.collector([], [], db=self.db)
+        self.assertEqual(self.history()["outages"], outages)
+
+    def test_short_reconnect_backfills_once_and_gap_does_not_create_outage(self):
+        initial = ({"samples": 2, "end_counter": 102}, {
+            key: values[:2] for key, values in HISTORY[1].items()
+        })
+        backfill = ({"samples": 6, "end_counter": 106}, {
+            "downlink_throughput_bps": [0, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000],
+            "uplink_throughput_bps": [0, 100_000, 200_000, 300_000, 400_000, 500_000],
+            "pop_ping_latency_ms": [35, 40, 45, 50, 48, 42],
+            "pop_ping_drop_rate": [0, 0, 0, 0, 0, 0],
+        })
+        collector = self.collector(
+            [ONLINE, DishUnreachable("timeout"), ONLINE], [initial, backfill]
+        )
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        history = self.history()
+        dish = [sample for sample in self.observed(history)
+                if sample["time_basis"] == "estimated_from_poll"]
+        self.assertEqual(len(dish), 6)
+        self.assertEqual(history["outages"], [])
+        self.assertEqual([sample["metrics"]["download_mbps"]["value"] for sample in dish], [0, 1, 2, 3, 4, 5])
+        self.assertFalse(any(sample["time_basis"] == "uncollected" and
+                             "12:00:02" in sample["at"] for sample in history["samples"]))
+
+    def test_long_unobserved_gap_remains_gap_without_confirmed_outage(self):
+        collector = self.collector(
+            [ONLINE, DishUnreachable("timeout"), ONLINE], [HISTORY, HISTORY]
+        )
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(minutes=3)
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(minutes=3)
+        asyncio.run(collector.poll_once())
+        history = self.history()
+        self.assertEqual(history["outages"], [])
+        self.assertTrue(any(sample["time_basis"] == "uncollected" and
+                            "12:03" in sample["at"] for sample in history["samples"]))
+
+    def test_full_ping_drop_without_offline_state_does_not_create_outage(self):
+        status = {**ONLINE, "pop_ping_drop_rate": 1}
+        collector = self.collector([status], [HISTORY])
+        asyncio.run(collector.poll_once())
+        self.assertEqual(self.history()["outages"], [])
+
+    def test_collector_gap_ends_confirmation_without_inventing_recovery(self):
+        offline = {**ONLINE, "state": "NO_PINGS"}
+        collector = self.collector(
+            [offline, DishUnreachable("timeout"), ONLINE], [HISTORY, HISTORY]
+        )
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        outages = self.history()["outages"]
+        self.assertEqual(len(outages), 1)
+        self.assertEqual(outages[0]["end_state"], "unobserved")
+        self.assertEqual(outages[0]["last_confirmed_at"], "2026-09-27T12:00:00Z")
+        self.assertIsNone(outages[0]["recovery_observed_at"])
+
+    def test_missing_id_outage_is_not_left_open_when_next_status_has_known_id(self):
+        offline_without_id = {**ONLINE, "state": "NO_PINGS", "id": None}
+        collector = self.collector([offline_without_id, ONLINE], [HISTORY])
+        asyncio.run(collector.poll_once())
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        outages = self.history()["outages"]
+        self.assertEqual(len(outages), 1)
+        self.assertEqual(outages[0]["device_id"], "unknown")
+        self.assertEqual(outages[0]["end_state"], "unobserved")
+        self.assertIsNone(outages[0]["recovery_observed_at"])
 
 
 if __name__ == "__main__":

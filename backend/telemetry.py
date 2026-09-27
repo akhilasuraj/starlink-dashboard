@@ -54,7 +54,7 @@ class StarlinkTelemetry:
 
             if self._context is None:
                 self._context = starlink_grpc.ChannelContext(self.target)
-            general, bulk = starlink_grpc.history_bulk_data(-1, context=self._context)
+            general, bulk = starlink_grpc.history_bulk_data(900, context=self._context)
             if not isinstance(general, dict) or not isinstance(bulk, dict):
                 raise TelemetryError("Unexpected history response")
             return general, bulk

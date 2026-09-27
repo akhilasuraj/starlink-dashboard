@@ -158,6 +158,7 @@ function renderHistory(history) {
   const windowText = `${duration} window · ${coverage}`;
   byId("history-window").textContent = windowText;
   byId("quality-window").textContent = windowText;
+  byId("outage-window").textContent = windowText;
   byId("history-time-note").textContent = history && history.time_note ||
     "Sample times and sources unavailable";
 
@@ -197,6 +198,36 @@ function renderHistory(history) {
     lossChart.data.datasets[0].data = series("drop_rate", 100);
     lossChart.update("none");
   }
+  renderOutages(history, start, end);
+}
+
+function renderOutages(history, start, end) {
+  const events = Array.isArray(history && history.outages) ? history.outages : [];
+  const validWindow = Number.isFinite(start) && Number.isFinite(end) && end > start;
+  const validEvents = events.filter((event) =>
+    event && typeof event.reason === "string" && typeof event.source === "string" &&
+    Number.isFinite(Date.parse(event.first_observed_at)) &&
+    Number.isFinite(Date.parse(event.last_confirmed_at)));
+  const confirmedInWindow = validWindow ? validEvents.filter((event) =>
+    Date.parse(event.last_confirmed_at) >= start && Date.parse(event.first_observed_at) <= end) : [];
+  byId("outage-track").innerHTML = confirmedInWindow.map((event) => {
+    const first = Date.parse(event.first_observed_at);
+    const last = Date.parse(event.last_confirmed_at);
+    const left = Math.max(0, Math.min(100, (first - start) / (end - start) * 100));
+    const right = Math.max(left, Math.min(100, (last - start) / (end - start) * 100));
+    return `<span class="outage-segment" style="left:${left}%;width:${right - left}%" ` +
+      `title="${escapeHtml(event.reason)}"></span>`;
+  }).join("");
+  byId("outage-list").innerHTML = validEvents.map((event) => {
+    const first = new Date(event.first_observed_at).toLocaleString();
+    const last = new Date(event.last_confirmed_at).toLocaleString();
+    const closure = event.end_state === "recovered" && Number.isFinite(Date.parse(event.recovery_observed_at))
+      ? `Recovery observed ${new Date(event.recovery_observed_at).toLocaleString()}`
+      : event.end_state === "open" ? "Still reported offline at last reading; end unknown"
+        : "Collection stopped or changed; end unknown";
+    return `<div class="outage-event">Dish reported ${escapeHtml(event.reason)} · ` +
+      `First observed ${first} · Last confirmed ${last} · ${closure} · ${escapeHtml(event.source)}</div>`;
+  }).join("") || "No dish-reported outages in this window";
 }
 
 async function updateData() {

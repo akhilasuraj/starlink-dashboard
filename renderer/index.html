@@ -98,6 +98,13 @@
               <div class="stat-item-title">Ping drop rate · last 15 minutes</div>
               <div class="quality-chart"><canvas id="lossChart"></canvas></div>
             </div>
+            <div class="stat-item">
+              <div class="stat-item-title">Dish-reported outages</div>
+              <p id="outage-window" class="reading-meta">Last 15 minutes · No observations yet</p>
+              <div id="outage-track" class="outage-track" aria-label="Dish-reported outage intervals"></div>
+              <div id="outage-list" class="outage-list">No dish-reported outages in this window</div>
+              <p id="outage-note" class="reading-meta">Blank time and collector gaps are not confirmed outages. Event boundaries are limited to observed dish states.</p>
+            </div>
           </div>
         </div>
 
