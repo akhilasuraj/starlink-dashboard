@@ -1,382 +1,211 @@
 const API_URL = "http://127.0.0.1:8000";
 
-// Chart.js setup
 let speedChart = null;
-let pingChart = null;
-let latencyChart = null;
-let powerChart = null;
-let throughputChart = null;
 let currentTab = "network";
 let autoScrollLogs = true;
 
 function initChart() {
-  const ctx = document.getElementById("speedChart").getContext("2d");
-
-  speedChart = new Chart(ctx, {
+  const canvas = document.getElementById("speedChart");
+  if (!canvas || typeof Chart === "undefined") return;
+  speedChart = new Chart(canvas.getContext("2d"), {
     type: "line",
     data: {
-      labels: Array(30).fill(""),
+      labels: [],
       datasets: [
-        {
-          label: "Download",
-          data: Array(30).fill(0),
-          borderColor: "#ffffff",
-          borderWidth: 2,
-          backgroundColor: "transparent",
-          fill: false,
-          tension: 0.3,
-          pointRadius: 0,
-        },
-        {
-          label: "Upload",
-          data: Array(30).fill(0),
-          borderColor: "#999999",
-          borderWidth: 2,
-          backgroundColor: "transparent",
-          fill: false,
-          tension: 0.3,
-          pointRadius: 0,
-        },
+        { label: "Download traffic (Mbps)", data: [], borderColor: "#ffffff", spanGaps: false, pointRadius: 0 },
+        { label: "Upload traffic (Mbps)", data: [], borderColor: "#999999", spanGaps: false, pointRadius: 0 },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      plugins: {
-        legend: {
-          display: true,
-          position: "bottom",
-          labels: {
-            color: "#888",
-            font: { size: 11 },
-            usePointStyle: true,
-            pointStyle: "line",
-            boxWidth: 20,
-            boxHeight: 2,
-            padding: 15,
-          },
-        },
-        tooltip: {
-          enabled: true,
-          mode: "index",
-          intersect: false,
-          backgroundColor: "#2a2a2a",
-          titleColor: "#fff",
-          bodyColor: "#ccc",
-          borderColor: "#444",
-          borderWidth: 1,
-        },
-      },
-      scales: {
-        x: {
-          display: false,
-        },
-        y: {
-          beginAtZero: true,
-          ticks: {
-            color: "#888",
-            font: { size: 10 },
-          },
-          grid: {
-            color: "#2a2a2a",
-            drawBorder: false,
-          },
-        },
-      },
+      scales: { y: { beginAtZero: true } },
     },
   });
 }
 
-// Initialize mini charts for statistics
-function initMiniChart(canvasId, color) {
-  const ctx = document.getElementById(canvasId).getContext("2d");
-  return new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: Array(30).fill(""),
-      datasets: [
-        {
-          data: Array(30).fill(0),
-          borderColor: color,
-          borderWidth: 1.5,
-          backgroundColor: "transparent",
-          fill: false,
-          tension: 0.3,
-          pointRadius: 0,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { enabled: false },
-      },
-      scales: {
-        x: { display: false },
-        y: {
-          display: false,
-          beginAtZero: true,
-        },
-      },
-    },
-  });
+function byId(id) {
+  return document.getElementById(id);
 }
 
-function initStatisticsCharts() {
-  pingChart = initMiniChart("pingChart", "#00c853");
-  latencyChart = initMiniChart("latencyChart", "#fff");
-  powerChart = initMiniChart("powerChart", "#fff");
-  throughputChart = initMiniChart("throughputChart", "#fff");
+function hasSourceAndTime(reading) {
+  return reading && typeof reading.source === "string" && reading.source.trim().length > 0 &&
+    typeof reading.observed_at === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(reading.observed_at) &&
+    Number.isFinite(Date.parse(reading.observed_at));
 }
 
-// Tab switching
-document.querySelectorAll(".tab-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const tabName = btn.dataset.tab;
-    currentTab = tabName;
+function isReadingAvailable(reading) {
+  return reading && (reading.availability === "available" || reading.availability === "stale") &&
+    hasSourceAndTime(reading) &&
+    typeof reading.value === "number" && Number.isFinite(reading.value);
+}
 
-    // Update buttons
-    document
-      .querySelectorAll(".tab-btn")
-      .forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
+function readingMeta(reading) {
+  if (!isReadingAvailable(reading)) return "Unavailable — not reported by the dish";
+  const when = new Date(reading.observed_at).toLocaleString();
+  const source = reading.source;
+  return `${reading.availability === "stale" ? "Stale · " : ""}${source} · ${when}`;
+}
 
-    // Update panes
-    document
-      .querySelectorAll(".tab-pane")
-      .forEach((pane) => pane.classList.remove("active"));
-    document.getElementById(tabName).classList.add("active");
+function setMetric(id, reading, format = (value) => value.toFixed(1)) {
+  const element = byId(id);
+  if (!element) return;
+  element.textContent = isReadingAvailable(reading) ? format(reading.value) : "Unavailable";
+  element.title = readingMeta(reading);
+  const meta = byId(`${id}-meta`);
+  if (meta) meta.textContent = readingMeta(reading);
+}
 
-    // Immediately update logs when switching to logs tab
-    if (tabName === "logs") {
-      updateLogs();
-    }
-  });
-});
+function setDevice(id, reading) {
+  const element = byId(id);
+  if (!element) return;
+  const available = reading && (reading.availability === "available" || reading.availability === "stale") &&
+    hasSourceAndTime(reading) &&
+    typeof reading.value === "string" && reading.value.trim().length > 0;
+  element.textContent = available ? reading.value : "Unavailable";
+  element.title = available
+    ? `${reading.availability === "stale" ? "Stale · " : ""}${reading.source} · ${new Date(reading.observed_at).toLocaleString()}`
+    : "Not reported by the dish";
+}
 
-// Handle window resize
-let resizeTimeout;
-window.addEventListener("resize", () => {
-  if (speedChart) {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      speedChart.resize();
-      speedChart.update("none"); // Update without animation
-    }, 100);
-  }
-});
-
-// Format uptime
 function formatUptime(seconds) {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-
-  if (days > 0) return `${days}d ${hours}h ${mins}m`;
-  if (hours > 0) return `${hours}h ${mins}m`;
-  return `${mins}m`;
+  const total = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  return days ? `${days}d ${hours}h ${minutes}m` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
-// Update UI
+function renderStatus(status) {
+  const collection = status && status.collection_state || "collector_error";
+  const statusProvenance = hasSourceAndTime(status);
+  const service = statusProvenance && status.service_state || "unknown";
+  const label = {
+    collecting: "COLLECTING",
+    reachable: service === "online" ? "SERVICE ONLINE" : service === "offline" ? "SERVICE OFFLINE" : "SERVICE UNKNOWN",
+    dish_unreachable: "DISH UNREACHABLE",
+    collector_error: "COLLECTOR ERROR",
+    stale: "DATA STALE",
+  }[collection] || "SERVICE UNKNOWN";
+  const headline = byId("status");
+  headline.textContent = label;
+  headline.style.color = collection !== "reachable" ? "#FFD600" :
+    service === "online" ? "#00C853" : service === "offline" ? "#D50000" : "#FFD600";
+
+  byId("collection-state").textContent =
+    `Collection: ${collection.replaceAll("_", " ")} · Service: ${service}` +
+    (statusProvenance && status.dish_state ? ` · Dish state: ${status.dish_state}` : "");
+  byId("observed-at").textContent = statusProvenance
+    ? `Last reading: ${new Date(status.observed_at).toLocaleString()} · Source: ${status.source}${status.stale ? " · stale" : ""}`
+    : "No dish reading yet";
+  const guidance = byId("guidance");
+  guidance.textContent = status && status.guidance ||
+    (collection === "collector_error" ? "The desktop collector could not read the dish. Check the backend logs." : "");
+  guidance.hidden = !guidance.textContent;
+
+  const metrics = status && status.metrics || {};
+  const device = status && status.device || {};
+  setMetric("download", metrics.download_mbps);
+  setMetric("upload", metrics.upload_mbps);
+  setMetric("latency", metrics.latency_ms, (value) => value.toFixed(0));
+  setMetric("latency-stat", metrics.latency_ms, (value) => value.toFixed(0));
+  setMetric("drop-rate", metrics.drop_rate, (value) => (value * 100).toFixed(1));
+  setMetric("dish-uptime", metrics.dish_uptime_s, formatUptime);
+  setMetric("gps-sats", metrics.gps_sats, (value) => value.toFixed(0));
+  setMetric("azimuth", metrics.azimuth_deg, (value) => `${value.toFixed(1)}°`);
+  setMetric("elevation", metrics.elevation_deg, (value) => `${value.toFixed(1)}°`);
+  byId("tilt").textContent = "Unavailable";
+  byId("tilt").title = "Not provided by this status API";
+  setDevice("dish-id", device.id);
+  setDevice("hardware", device.hardware);
+  setDevice("software", device.software);
+
+  const obstruction = metrics.obstructed_pct;
+  byId("obstruction-text").textContent = isReadingAvailable(obstruction)
+    ? `Obstructed: ${obstruction.value.toFixed(2)}%` : "Obstruction: Unavailable";
+  byId("obstruction-meta").textContent = readingMeta(obstruction);
+  byId("obstruction-bar").style.width = isReadingAvailable(obstruction)
+    ? `${Math.max(0, Math.min(obstruction.value, 100))}%` : "0%";
+}
+
+function renderHistory(history) {
+  if (!speedChart) return;
+  const samples = Array.isArray(history && history.samples) ? history.samples : [];
+  speedChart.data.labels = samples.map((sample) => sample && sample.observed_at || "");
+  speedChart.data.datasets[0].data = samples.map((sample) =>
+    hasSourceAndTime(sample) && typeof sample.download_mbps === "number" && Number.isFinite(sample.download_mbps)
+      ? sample.download_mbps : null);
+  speedChart.data.datasets[1].data = samples.map((sample) =>
+    hasSourceAndTime(sample) && typeof sample.upload_mbps === "number" && Number.isFinite(sample.upload_mbps)
+      ? sample.upload_mbps : null);
+  speedChart.update("none");
+}
+
 async function updateData() {
   try {
-    const [statusRes, historyRes] = await Promise.all([
-      fetch(`${API_URL}/api/status`),
-      fetch(`${API_URL}/api/history`),
-    ]);
-
-    const status = await statusRes.json();
-    const history = await historyRes.json();
-
-    // Header
-    document.getElementById("status").textContent =
-      status.status_text.toUpperCase();
-    document.getElementById("status").style.color = status.status_text.includes(
-      "Online"
-    )
-      ? "#00C853"
-      : status.status_text.includes("Obstructed")
-      ? "#FFD600"
-      : "#D50000";
-
-    document.getElementById("uptime").textContent = `Uptime: ${formatUptime(
-      status.uptime_s
-    )}`;
-
-    // Network stats
-    document.getElementById("upload").textContent = status.up.toFixed(1);
-    document.getElementById("download").textContent = status.down.toFixed(1);
-    document.getElementById("latency").textContent = Math.round(status.ping);
-
-    // Update chart
-    if (speedChart) {
-      speedChart.data.datasets[0].data = history.download;
-      speedChart.data.datasets[1].data = history.upload;
-      speedChart.update();
-    }
-
-    // Visibility
-    const obsPct = status.obstructed_pct;
-    document.getElementById(
-      "obstruction-text"
-    ).textContent = `Obstructed: ${obsPct.toFixed(2)}%`;
-    const obsBar = document.getElementById("obstruction-bar");
-    obsBar.style.width = `${Math.min(obsPct, 100)}%`;
-    obsBar.style.background = obsPct > 1 ? "#FFD600" : "#00C853";
-
-    // Device
-    document.getElementById("hardware").textContent = status.hardware;
-    document.getElementById("software").textContent =
-      status.software.split("-")[0];
-    document.getElementById("gps-sats").textContent = status.gps_sats;
-    document.getElementById(
-      "eth-speed"
-    ).textContent = `${status.eth_speed} Mbps`;
-    document.getElementById("heater").textContent = status.heater;
-    document.getElementById("azimuth").textContent = `${status.azimuth.toFixed(
-      1
-    )}°`;
-    document.getElementById(
-      "elevation"
-    ).textContent = `${status.elevation.toFixed(1)}°`;
-    document.getElementById("tilt").textContent = `${status.tilt.toFixed(1)}°`;
-
-    // Statistics
-    // Ping success (assuming 100% for now, can be calculated from drop rate)
-    const pingSuccess = Math.max(0, 100 - (status.drop_rate || 0) * 100);
-    document.getElementById("ping-success").textContent =
-      pingSuccess.toFixed(1);
-
-    // Latency median
-    document.getElementById("latency-stat").textContent = Math.round(
-      status.ping
-    );
-
-    // Power draw (placeholder - would need real data from API)
-    const powerDraw = status.power_draw || 42; // Default to 42W if not available
-    document.getElementById("power-draw").textContent = Math.round(powerDraw);
-
-    // Throughput (current download speed)
-    document.getElementById("throughput").textContent = status.down.toFixed(1);
-
-    // Update statistics charts
-    if (pingChart) {
-      // Create ping success percentage data from history
-      const pingData = history.download.map(() => pingSuccess);
-      pingChart.data.datasets[0].data = pingData;
-      pingChart.update();
-    }
-
-    if (latencyChart) {
-      // Use some variation around current latency for demo
-      const latencyData = Array(30)
-        .fill(0)
-        .map((_, i) => status.ping + Math.sin(i * 0.3) * 5);
-      latencyChart.data.datasets[0].data = latencyData;
-      latencyChart.update();
-    }
-
-    if (powerChart) {
-      // Create power data with some variation
-      const powerData = Array(30)
-        .fill(0)
-        .map((_, i) => powerDraw + Math.sin(i * 0.4) * 3);
-      powerChart.data.datasets[0].data = powerData;
-      powerChart.update();
-    }
-
-    if (throughputChart) {
-      // Use download history for throughput
-      throughputChart.data.datasets[0].data = history.download;
-      throughputChart.update();
-    }
-  } catch (err) {
-    console.error("Update error:", err);
-    console.error("Error details:", err.message, err.stack);
-    document.getElementById("status").textContent = "DISCONNECTED";
-    document.getElementById("status").style.color = "#D50000";
-
-    // Log to console for debugging
-    console.log("Failed to fetch from:", API_URL);
-    console.log("Error type:", err.name);
-    console.log("Error message:", err.message);
+    const response = await fetch(`${API_URL}/api/status`);
+    if (!response.ok) throw new Error(`Status API: HTTP ${response.status}`);
+    renderStatus(await response.json());
+  } catch (error) {
+    renderStatus({ collection_state: "collector_error", service_state: "unknown", metrics: {}, device: {} });
+    byId("guidance").textContent = "The desktop collector is unavailable. Check that the backend started.";
+    byId("guidance").hidden = false;
+    console.error("Status fetch failed:", error);
   }
-}
-
-async function updateLogs() {
-  if (currentTab !== "logs") return; // Only fetch logs when logs tab is active
-
   try {
-    const response = await fetch(`${API_URL}/api/logs`);
-    const data = await response.json();
-
-    const logsContent = document.getElementById("logs-content");
-    const wasScrolledToBottom =
-      logsContent.scrollHeight - logsContent.clientHeight <=
-      logsContent.scrollTop + 50;
-
-    // Build logs HTML
-    const logsHTML = data.logs
-      .map((log) => {
-        const levelClass = `log-${log.level.toLowerCase()}`;
-        return `
-                <div class="log-entry">
-                    <span class="log-time">${log.timestamp.split(" ")[1]}</span>
-                    <span class="log-level ${levelClass}">${log.level}</span>
-                    <span class="log-message">${escapeHtml(log.message)}</span>
-                </div>
-            `;
-      })
-      .join("");
-
-    logsContent.innerHTML =
-      logsHTML ||
-      '<div class="log-entry"><span class="log-message">No logs available</span></div>';
-
-    // Auto-scroll to bottom if user was at bottom
-    if (wasScrolledToBottom && autoScrollLogs) {
-      logsContent.scrollTop = logsContent.scrollHeight;
-    }
-  } catch (err) {
-    console.error("Logs fetch error:", err);
+    const response = await fetch(`${API_URL}/api/history`);
+    if (response.ok) renderHistory(await response.json());
+  } catch (error) {
+    console.error("History fetch failed:", error);
   }
 }
 
-function escapeHtml(text) {
+function escapeHtml(value) {
   const div = document.createElement("div");
-  div.textContent = text;
+  div.textContent = String(value);
   return div.innerHTML;
 }
 
-// Initialize
+async function updateLogs() {
+  if (currentTab !== "logs") return;
+  try {
+    const response = await fetch(`${API_URL}/api/logs`);
+    if (!response.ok) throw new Error(`Logs API: HTTP ${response.status}`);
+    const data = await response.json();
+    const content = byId("logs-content");
+    const wasAtBottom = content.scrollHeight - content.clientHeight <= content.scrollTop + 50;
+    content.innerHTML = (Array.isArray(data.logs) ? data.logs : []).map((log) =>
+      `<div class="log-entry"><span class="log-time">${escapeHtml(log.timestamp || "")}</span>` +
+      `<span class="log-level">${escapeHtml(log.level || "")}</span>` +
+      `<span class="log-message">${escapeHtml(log.message || "")}</span></div>`
+    ).join("") || "No logs available";
+    if (wasAtBottom && autoScrollLogs) content.scrollTop = content.scrollHeight;
+  } catch (error) {
+    console.error("Logs fetch failed:", error);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initChart();
-  initStatisticsCharts();
+  document.querySelectorAll(".tab-btn").forEach((button) => button.addEventListener("click", () => {
+    currentTab = button.dataset.tab;
+    document.querySelectorAll(".tab-btn").forEach((item) => item.classList.remove("active"));
+    document.querySelectorAll(".tab-pane").forEach((item) => item.classList.remove("active"));
+    button.classList.add("active");
+    byId(currentTab).classList.add("active");
+    if (currentTab === "logs") updateLogs();
+  }));
+  byId("clear-logs").addEventListener("click", async () => {
+    await fetch(`${API_URL}/api/logs/clear`, { method: "POST" });
+    byId("logs-content").textContent = "Logs cleared";
+  });
+  byId("logs-content").addEventListener("scroll", (event) => {
+    const el = event.target;
+    autoScrollLogs = el.scrollHeight - el.clientHeight <= el.scrollTop + 50;
+  });
   updateData();
   setInterval(updateData, 2000);
-  setInterval(updateLogs, 1000); // Update logs every second
-
-  // Clear logs button
-  document.getElementById("clear-logs").addEventListener("click", async () => {
-    try {
-      await fetch(`${API_URL}/api/logs/clear`, { method: "POST" });
-      const logsContent = document.getElementById("logs-content");
-      logsContent.innerHTML =
-        '<div class="log-entry"><span class="log-message">Logs cleared</span></div>';
-    } catch (err) {
-      console.error("Failed to clear logs:", err);
-    }
-  });
-
-  // Detect manual scroll to disable auto-scroll
-  document.getElementById("logs-content").addEventListener("scroll", (e) => {
-    const element = e.target;
-    const isAtBottom =
-      element.scrollHeight - element.clientHeight <= element.scrollTop + 50;
-    autoScrollLogs = isAtBottom;
-  });
+  setInterval(updateLogs, 1000);
 });

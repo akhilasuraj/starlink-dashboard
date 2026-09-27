@@ -50,7 +50,7 @@ function startBackend() {
         mainWindow.webContents
           .executeJavaScript(
             `
-          alert('Python backend failed to start. Please ensure Python 3.7+ is installed and added to PATH.\\n\\nError: ${err.message.replace(
+          alert('Python backend failed to start. Please ensure Python 3.9+ is installed and added to PATH.\\n\\nError: ${err.message.replace(
             /'/g,
             "\\'"
           )}');
@@ -162,22 +162,23 @@ function createWindow() {
   setInterval(async () => {
     try {
       const response = await fetch("http://127.0.0.1:8000/api/status");
+      if (!response.ok) throw new Error(`Status API returned ${response.status}`);
       const data = await response.json();
 
-      if (data.online) {
-        if (data.obstructed_pct > 5) {
-          updateTrayIcon("yellow");
-        } else {
-          updateTrayIcon("green");
-        }
-      } else {
+      if (data.collection_state !== "reachable") {
+        updateTrayIcon("yellow");
+      } else if (data.service_state === "online") {
+        updateTrayIcon("green");
+      } else if (data.service_state === "offline") {
         updateTrayIcon("red");
+      } else {
+        updateTrayIcon("yellow");
       }
 
       tray.setToolTip(`Starlink: ${data.status_text}`);
     } catch (err) {
-      updateTrayIcon("red");
-      tray.setToolTip("Starlink: Disconnected");
+      updateTrayIcon("yellow");
+      tray.setToolTip("Starlink: Collector unavailable");
     }
   }, 2000);
 }

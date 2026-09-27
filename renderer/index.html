@@ -12,7 +12,9 @@
       <!-- Header -->
       <div class="header">
         <h1 id="status">CONNECTING...</h1>
-        <p id="uptime">Uptime: --</p>
+        <p id="collection-state">Waiting for collector</p>
+        <p id="observed-at">No reading yet</p>
+        <p id="guidance" class="guidance" hidden></p>
       </div>
 
       <!-- Tabs -->
@@ -29,87 +31,61 @@
         <div id="network" class="tab-pane active">
           <div class="stats-row">
             <div class="stat-card">
-              <div class="stat-label">DOWNLOAD</div>
+              <div class="stat-label">CURRENT DOWNLOAD TRAFFIC</div>
               <div class="stat-value" id="download">--</div>
               <div class="stat-unit">Mbps</div>
+              <div class="reading-meta" id="download-meta">Unavailable</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">UPLOAD</div>
+              <div class="stat-label">CURRENT UPLOAD TRAFFIC</div>
               <div class="stat-value" id="upload">--</div>
               <div class="stat-unit">Mbps</div>
+              <div class="reading-meta" id="upload-meta">Unavailable</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">LATENCY</div>
               <div class="stat-value" id="latency">--</div>
               <div class="stat-unit">ms</div>
+              <div class="reading-meta" id="latency-meta">Unavailable</div>
             </div>
           </div>
           <div class="graph-container">
             <canvas id="speedChart"></canvas>
+            <p class="reading-meta">Observed traffic from this app session. Missing polls are gaps.</p>
           </div>
         </div>
 
         <!-- Statistics Tab -->
         <div id="statistics" class="tab-pane">
           <div class="stats-list">
-            <!-- Ping Success -->
             <div class="stat-item">
               <div class="stat-item-header">
-                <span class="stat-item-title">Ping success</span>
+                <span class="stat-item-title">Current ping drop rate</span>
               </div>
               <div class="stat-item-value">
-                <span class="stat-large" id="ping-success">--</span>
+                <span class="stat-large" id="drop-rate">--</span>
                 <span class="stat-unit">%</span>
               </div>
-              <div class="stat-item-subtitle">last 15 minutes</div>
-              <div class="stat-item-chart">
-                <canvas id="pingChart" height="30"></canvas>
-              </div>
+              <div class="stat-item-subtitle" id="drop-rate-meta">Unavailable</div>
             </div>
-
-            <!-- Latency -->
             <div class="stat-item">
               <div class="stat-item-header">
-                <span class="stat-item-title">Latency</span>
+                <span class="stat-item-title">Current latency</span>
               </div>
               <div class="stat-item-value">
                 <span class="stat-large" id="latency-stat">--</span>
                 <span class="stat-unit">ms</span>
               </div>
-              <div class="stat-item-subtitle">median, last 15 minutes</div>
-              <div class="stat-item-chart">
-                <canvas id="latencyChart" height="30"></canvas>
-              </div>
+              <div class="stat-item-subtitle" id="latency-stat-meta">Unavailable</div>
             </div>
-
-            <!-- Power Draw -->
             <div class="stat-item">
               <div class="stat-item-header">
-                <span class="stat-item-title">Power draw</span>
+                <span class="stat-item-title">Dish uptime since reboot</span>
               </div>
               <div class="stat-item-value">
-                <span class="stat-large" id="power-draw">--</span>
-                <span class="stat-unit">W</span>
+                <span class="stat-large" id="dish-uptime">--</span>
               </div>
-              <div class="stat-item-subtitle">average, last 15 minutes</div>
-              <div class="stat-item-chart">
-                <canvas id="powerChart" height="30"></canvas>
-              </div>
-            </div>
-
-            <!-- Throughput -->
-            <div class="stat-item">
-              <div class="stat-item-header">
-                <span class="stat-item-title">Throughput</span>
-              </div>
-              <div class="stat-item-value">
-                <span class="stat-large" id="throughput">--</span>
-                <span class="stat-unit">Mbps</span>
-              </div>
-              <div class="stat-item-subtitle">download</div>
-              <div class="stat-item-chart">
-                <canvas id="throughputChart" height="30"></canvas>
-              </div>
+              <div class="stat-item-subtitle" id="dish-uptime-meta">Unavailable</div>
             </div>
           </div>
         </div>
@@ -117,13 +93,18 @@
         <!-- Device Tab -->
         <div id="device" class="tab-pane">
           <div class="obstruction-info">
-            <h3 id="obstruction-text">Obstructed: 0%</h3>
+            <h3 id="obstruction-text">Obstruction: Unavailable</h3>
+            <p class="reading-meta" id="obstruction-meta">Unavailable</p>
             <div class="progress-bar">
               <div id="obstruction-bar" class="progress-fill"></div>
             </div>
           </div>
           <div class="device-section">
             <h3>DETAILS</h3>
+            <div class="device-row">
+              <span>Dish ID</span>
+              <span id="dish-id">Unavailable</span>
+            </div>
             <div class="device-row">
               <span>Hardware</span>
               <span id="hardware">--</span>
@@ -133,17 +114,10 @@
               <span id="software">--</span>
             </div>
             <div class="device-row">
-              <span>GPS Sats</span>
+              <span>GPS satellites</span>
               <span id="gps-sats">--</span>
             </div>
-            <div class="device-row">
-              <span>Eth Speed</span>
-              <span id="eth-speed">--</span>
-            </div>
-            <div class="device-row">
-              <span>Heater</span>
-              <span id="heater">--</span>
-            </div>
+            <p class="reading-meta">Device readings share the observation time shown above. Unavailable means this status call did not provide a value.</p>
           </div>
           <div class="device-section">
             <h3>ALIGNMENT</h3>

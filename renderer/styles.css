@@ -36,6 +36,21 @@ body {
   font-size: 12px;
 }
 
+.header .guidance {
+  margin: 12px auto 0;
+  max-width: 520px;
+  color: #ffd600;
+  line-height: 1.45;
+}
+
+.reading-meta {
+  color: #aaa;
+  font-size: 11px;
+  margin-top: 7px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 /* Tabs */
 .tabs {
   display: flex;

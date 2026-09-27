@@ -2,18 +2,20 @@
 
 A modern desktop application for monitoring your Starlink connection statistics in real-time.
 
+> Revival in progress: the live monitor now distinguishes dish reachability, dish-reported service state, and stale readings. History is still limited to recent in-memory polls, and the installer still needs a separate Python runtime. See [the implementation plan](docs/implementation-plan.md) for the remaining work.
+
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
 
-- 📊 **Real-time speed graphs** - Download/Upload throughput visualization
+- 📊 **Current traffic graph** - Observed download/upload traffic, not a speed test
 - 📡 **Connection monitoring** - Live status updates every 2 seconds
-- 🛰️ **Dish alignment info** - Azimuth, elevation, and tilt angles
-- 🌐 **GPS satellite tracking** - Number of satellites visible
+- 🛰️ **Dish alignment info** - Azimuth and elevation when reported
+- 🌐 **GPS reception** - GPS satellite count when reported
 - ⚡ **Latency monitoring** - Pop ping latency in milliseconds
 - 🌡️ **Obstruction detection** - Visual percentage and warnings
-- 🔄 **Auto-start on boot** - Runs automatically when Windows starts
+- 🔄 **Auto-start on boot** - Installer-managed startup in the current legacy package
 - 🎨 **Dark theme UI** - Easy on the eyes
 - 📋 **Real-time logs** - Backend debugging and monitoring
 - 🔔 **System tray integration** - Runs quietly in the background
@@ -37,7 +39,7 @@ Real-time backend logs for debugging and monitoring.
 ### Requirements
 
 - **Operating System**: Windows 10/11 (64-bit)
-- **Python**: 3.7 or later ([Download Python](https://www.python.org/downloads/))
+- **Python**: 3.9 or later ([Download Python](https://www.python.org/downloads/))
   - ⚠️ **Important**: Check "Add Python to PATH" during installation
 - **Network**: Connected to Starlink network (dish accessible at 192.168.100.1)
 
@@ -52,12 +54,12 @@ Real-time backend logs for debugging and monitoring.
 
 - **System Tray Icon**: Color indicates status
   - 🟢 Green = Online
-  - 🟡 Yellow = Obstructed
-  - 🔴 Red = Offline/Disconnected
+  - 🟡 Yellow = Dish unreachable, stale data, collector issue, or unknown service state
+  - 🔴 Red = Dish-reported service offline
 - **Open Dashboard**: Right-click tray icon → "Open Dashboard"
 - **View Logs**: Click the "LOGS" tab for real-time backend activity
 - **Quit**: Right-click tray icon → "Quit"
-- **Auto-start**: App launches automatically on Windows startup
+- **Auto-start**: The current installer configures startup; opt-in behavior is planned
 
 ### Troubleshooting
 
@@ -74,7 +76,7 @@ If you see "Starlink is disconnected":
    python --version
    ```
 
-   Should show Python 3.7 or later
+   Should show Python 3.9 or later
 
 3. **Check Starlink connection**:
    - Ensure you're connected to the Starlink network
@@ -179,17 +181,17 @@ starlink/
 
 The Python backend exposes the following REST API:
 
-- `GET /api/status` - Current Starlink status and statistics
-- `GET /api/history` - Speed history for graphing (last 30 data points)
+- `GET /api/status` - Collection and service state, freshness, capabilities, and measured values
+- `GET /api/history` - Recent observed traffic polls with null gaps (up to 30; not durable yet)
 - `GET /api/logs` - Recent backend logs (last 200 entries)
 - `GET /health` - Health check endpoint
 
 ### Tech Stack
 
 - **Backend**:
-  - Python 3.7+
+  - Python 3.9+
   - FastAPI (REST API framework)
-  - starlink-client (gRPC client for Starlink dish)
+  - starlink-grpc-core (local gRPC status client for Starlink dish)
   - uvicorn (ASGI server)
 - **Frontend**:
   - Electron 28 (Desktop app framework)
@@ -217,5 +219,5 @@ MIT License - See LICENSE file for details
 
 ## Acknowledgments
 
-- [starlink-client](https://github.com/sparky8512/starlink-grpc-tools) - Python gRPC client for Starlink
+- [starlink-grpc-core](https://pypi.org/project/starlink-grpc-core/) - Python gRPC client for Starlink
 - Built with ❤️ for Starlink users
