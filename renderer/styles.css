@@ -51,6 +51,28 @@ body {
   overflow-wrap: anywhere;
 }
 
+.history-range-selector {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+
+.history-range-btn {
+  padding: 6px 12px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #bbb;
+  background: #252525;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.history-range-btn.active {
+  color: #fff;
+  border-color: #00c853;
+}
+
 /* Tabs */
 .tabs {
   display: flex;

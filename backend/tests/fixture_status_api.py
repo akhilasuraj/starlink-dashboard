@@ -35,7 +35,7 @@ def fixture(name):
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
 
-def main(scenario, endpoint="status"):
+def main(scenario, endpoint="status", range_name="15m"):
     clock = [datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)]
     readings = {
         "online-idle": [fixture("online-idle.json")],
@@ -46,6 +46,7 @@ def main(scenario, endpoint="status"):
         "reported-outage": [fixture("service-offline.json"), fixture("service-offline.json"), fixture("online-idle.json")],
         "outage-boundary": [fixture("service-offline.json"), fixture("online-idle.json")],
         "outage-recovery-in-window": [fixture("service-offline.json"), fixture("online-idle.json")],
+        "range-views": [fixture("online-idle.json")],
     }
     if scenario not in readings:
         raise ValueError(f"Unknown fixture scenario: {scenario}")
@@ -60,6 +61,14 @@ def main(scenario, endpoint="status"):
             history_store=HistoryStore(Path(temporary) / "history.sqlite3"),
         )
         asyncio.run(app.state.collector.poll_once())
+        if scenario == "range-views":
+            store = app.state.collector.history_store
+            old = clock[0] - timedelta(days=6)
+            middle = clock[0] - timedelta(hours=12)
+            store.record_status({**fixture("online-idle.json"), "downlink_throughput_bps": 1_000_000}, old)
+            store.record_status({**fixture("online-idle.json"), "downlink_throughput_bps": 2_000_000}, middle)
+            store.record_outage_state("ut-fixture", "NO_PINGS", middle, offline=True, continuity_seconds=6)
+            store.record_outage_state("ut-fixture", "CONNECTED", middle + timedelta(seconds=2), offline=False, continuity_seconds=6)
         if scenario == "reported-outage":
             clock[0] += timedelta(seconds=2)
             asyncio.run(app.state.collector.poll_once())
@@ -72,10 +81,12 @@ def main(scenario, endpoint="status"):
             clock[0] += timedelta(minutes=14, seconds=58)
         if scenario == "stale":
             clock[0] += timedelta(seconds=10)
-        response = TestClient(app).get(f"/api/{endpoint}")
+        params = {"range": range_name} if endpoint == "history" else None
+        response = TestClient(app).get(f"/api/{endpoint}", params=params)
         response.raise_for_status()
         print(json.dumps(response.json()))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "status")
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "status",
+         sys.argv[3] if len(sys.argv) > 3 else "15m")

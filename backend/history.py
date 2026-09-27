@@ -1,4 +1,4 @@
-"""Durable observations for the current 15-minute investigation window."""
+"""Durable observations for bounded quality and outage investigation windows."""
 
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
@@ -16,6 +16,7 @@ UNITS = {
     "latency_ms": "ms",
     "drop_rate": "fraction",
 }
+RANGES = {"15m": (900, None), "24h": (86400, 300), "7d": (604800, 1800)}
 
 
 def utc_text(value):
@@ -212,19 +213,53 @@ class HistoryStore:
             db.commit()
             return len(inserted_times)
 
-    def window(self, now, seconds=900):
+    def window(self, now, range_name="15m"):
+        seconds, bucket_seconds = RANGES[range_name]
         start = now - timedelta(seconds=seconds)
         start_text, end_text = utc_text(start), utc_text(now)
         with closing(self._connect()) as db:
-            rows = db.execute(
-                "SELECT * FROM samples WHERE at>=? AND at<=? ORDER BY at, time_basis",
-                (start_text, end_text),
-            ).fetchall()
+            if bucket_seconds is None:
+                rows = db.execute(
+                    "SELECT * FROM samples WHERE at>=? AND at<=? ORDER BY at, time_basis",
+                    (start_text, end_text),
+                ).fetchall()
+                samples, observed_times = self._raw_samples(rows, start, now)
+            else:
+                samples, observed_times = self._rollup_samples(
+                    db, start, now, bucket_seconds, seconds
+                )
             outages = db.execute(
                 "SELECT * FROM outages WHERE first_observed_at<=? AND "
                 "COALESCE(recovery_observed_at,last_confirmed_at)>=? ORDER BY first_observed_at",
                 (end_text, start_text),
             ).fetchall()
+        return {
+            "range": range_name,
+            "window_seconds": seconds,
+            "bucket_seconds": bucket_seconds,
+            "window_start": start_text,
+            "window_end": end_text,
+            "coverage_start": min(observed_times) if observed_times else None,
+            "coverage_end": max(observed_times) if observed_times else None,
+            "time_note": (
+                "Dish history sample times are estimated from the local poll time; the dish does not provide UTC timestamps. "
+                + ("Long-range averages use observed samples only; empty buckets are uncollected, and sparse buckets do not prove continuous service."
+                   if bucket_seconds else "")
+            ),
+            "samples": samples,
+            "outages": [{
+                "id": event["id"],
+                "device_id": event["device_id"],
+                "reason": event["reason"],
+                "first_observed_at": event["first_observed_at"],
+                "last_confirmed_at": event["last_confirmed_at"],
+                "recovery_observed_at": event["recovery_observed_at"],
+                "end_state": event["end_state"],
+                "source": event["source"],
+            } for event in outages],
+        }
+
+    def _raw_samples(self, rows, start, now):
         grouped = []
         for row in rows:
             if not grouped or grouped[-1][0]["at"] != row["at"]:
@@ -244,26 +279,86 @@ class HistoryStore:
                 observed_times.append(sample["at"])
             last_at = current_at
         if not grouped or (now - last_at).total_seconds() > 2.5:
-            samples.append(self._gap(end_text))
-        return {
-            "window_seconds": seconds,
-            "window_start": start_text,
-            "window_end": end_text,
-            "coverage_start": min(observed_times) if observed_times else None,
-            "coverage_end": max(observed_times) if observed_times else None,
-            "time_note": "Dish history sample times are estimated from the local poll time; the dish does not provide UTC timestamps.",
-            "samples": samples,
-            "outages": [{
-                "id": event["id"],
-                "device_id": event["device_id"],
-                "reason": event["reason"],
-                "first_observed_at": event["first_observed_at"],
-                "last_confirmed_at": event["last_confirmed_at"],
-                "recovery_observed_at": event["recovery_observed_at"],
-                "end_state": event["end_state"],
-                "source": event["source"],
-            } for event in outages],
-        }
+            samples.append(self._gap(utc_text(now)))
+        return samples, observed_times
+
+    def _rollup_samples(self, db, start, now, bucket_seconds, seconds):
+        bins = [None] * (seconds // bucket_seconds)
+        picked_fields = []
+        moment_fields = []
+        rollup_fields = []
+        for name in UNITS:
+            packed = f"{name}_picked"
+            # The chosen value, capture time, and source travel together in one JSON tuple.
+            # Prefixing priority and capture time makes MAX choose the same latest
+            # preferred row for all three fields, even across counter-reset overlap.
+            picked_fields.append(
+                f"MAX(CASE WHEN time_basis!='uncollected' AND {name} IS NOT NULL "
+                f"AND observed_at IS NOT NULL AND source IS NOT NULL THEN "
+                f"printf('%d%s%s', CASE WHEN time_basis='estimated_from_poll' THEN 1 ELSE 0 END, "
+                f"observed_at, json_array({name}, observed_at, source)) END) AS {packed}"
+            )
+            moment_fields.extend((
+                f"json_extract(substr({packed}, 22), '$[0]') AS {name}",
+                f"json_extract(substr({packed}, 22), '$[1]') AS {name}_observed_at",
+                f"json_extract(substr({packed}, 22), '$[2]') AS {name}_source",
+            ))
+            rollup_fields.extend((
+                f"AVG({name}) AS {name}",
+                f"COUNT({name}) AS {name}_count",
+                f"MAX({name}_observed_at) AS {name}_observed_at",
+                f"GROUP_CONCAT(DISTINCT {name}_source) AS {name}_sources",
+            ))
+        query = (
+            "WITH picked AS (SELECT at, " + ", ".join(picked_fields) +
+            " FROM samples WHERE at>=? AND at<=? GROUP BY at "
+            "HAVING MAX(CASE WHEN time_basis!='uncollected' THEN 1 ELSE 0 END)=1), "
+            "moments AS (SELECT at, " + ", ".join(moment_fields) + " FROM picked) "
+            "SELECT min(?, CAST((strftime('%s', at) - ?) / ? AS INTEGER)) AS bucket_index, "
+            "MIN(at) AS first_at, MAX(at) AS last_at, COUNT(*) AS sample_count, " +
+            ", ".join(rollup_fields) + " FROM moments GROUP BY bucket_index ORDER BY bucket_index"
+        )
+        for row in db.execute(
+            query, (utc_text(start), utc_text(now), len(bins) - 1, int(start.timestamp()), bucket_seconds)
+        ):
+            bins[row["bucket_index"]] = row
+
+        samples, observed_times = [], []
+        for index, bucket in enumerate(bins):
+            bucket_start = utc_text(start + timedelta(seconds=index * bucket_seconds))
+            bucket_end = utc_text(start + timedelta(seconds=(index + 1) * bucket_seconds))
+            if bucket is None:
+                gap = self._gap(bucket_start)
+                gap.update({"bucket_start": bucket_start, "bucket_end": bucket_end, "sample_count": 0})
+                samples.append(gap)
+                continue
+            observed_times.extend((bucket["first_at"], bucket["last_at"]))
+            metrics = {}
+            for name, unit in UNITS.items():
+                has_value = bucket[f"{name}_count"] > 0
+                sources = bucket[f"{name}_sources"]
+                metrics[name] = {
+                    "value": bucket[name] if has_value else None,
+                    "unit": unit,
+                    "availability": "available" if has_value else "unavailable",
+                    "source": f"local SQLite average of {sources.replace(',', ', ')}" if has_value else None,
+                    "observed_at": bucket[f"{name}_observed_at"],
+                    "time_basis": "rollup" if has_value else None,
+                    "sample_count": bucket[f"{name}_count"],
+                }
+            samples.append({
+                "at": bucket["last_at"],
+                "observed_at": bucket["last_at"],
+                "time_basis": "rollup",
+                "source": "local SQLite rollup",
+                "bucket_start": bucket_start,
+                "bucket_end": bucket_end,
+                "observed_start": bucket["first_at"],
+                "observed_end": bucket["last_at"],
+                "sample_count": bucket["sample_count"],
+                "metrics": metrics,
+            })
+        return samples, observed_times
 
     @staticmethod
     def _merged_sample(rows):

@@ -32,27 +32,37 @@ function apiStatus(scenario) {
   return JSON.parse(result.stdout);
 }
 
-function apiHistory(scenario) {
-  const result = spawnSync(python, ["-m", "backend.tests.fixture_status_api", scenario, "history"], {
+function apiHistory(scenario, range = "15m") {
+  const result = spawnSync(python, ["-m", "backend.tests.fixture_status_api", scenario, "history", range], {
     cwd: path.join(__dirname, ".."), encoding: "utf8",
   });
   assert.equal(result.status, 0, `Fixture history API failed: ${result.stderr || result.error}`);
   return JSON.parse(result.stdout);
 }
 
-function desktop(response, history = { samples: [] }, withCharts = false) {
+function desktop(response, history = { samples: [] }, withCharts = false, domReady = false) {
   const elements = new Map();
   const charts = [];
+  const requests = [];
+  const rangeButtons = ["15m", "24h", "7d"].map((range) => ({
+    dataset: { range },
+    attrs: {},
+    setAttribute(name, value) { this.attrs[name] = value; },
+    classList: { add() {}, remove() {}, toggle() {} },
+    addEventListener(_event, callback) { this.onClick = callback; },
+    click() { return this.onClick(); },
+  }));
+  let onReady;
   const document = {
     getElementById(id) {
       if (!htmlIds.has(id)) return null;
       if (!elements.has(id)) {
-        elements.set(id, { textContent: "", style: {}, hidden: false, title: "", getContext() { return {}; } });
+        elements.set(id, { textContent: "", style: {}, hidden: false, title: "", getContext() { return {}; }, addEventListener() {} });
       }
       return elements.get(id);
     },
-    addEventListener() {},
-    querySelectorAll() { return []; },
+    addEventListener(name, callback) { if (name === "DOMContentLoaded") onReady = callback; },
+    querySelectorAll(selector) { return selector === ".history-range-btn" ? rangeButtons : []; },
     createElement() {
       return {
         innerHTML: "",
@@ -68,7 +78,12 @@ function desktop(response, history = { samples: [] }, withCharts = false) {
     console: { error() {} },
     fetch: async (url) => ({
       ok: true,
-      json: async () => url.endsWith("/api/status") ? response : history,
+      json: async () => {
+        requests.push(url);
+        if (url.endsWith("/api/status")) return response;
+        if (history.byRange) return history.byRange[new URL(url).searchParams.get("range")];
+        return history;
+      },
     }),
     Chart: withCharts ? class {
       constructor(_context, configuration) {
@@ -82,13 +97,18 @@ function desktop(response, history = { samples: [] }, withCharts = false) {
     Date,
   });
   vm.runInContext(appSource, context);
-  if (withCharts) vm.runInContext("initChart()", context);
+  if (domReady) onReady();
+  else if (withCharts) vm.runInContext("initChart()", context);
   return {
     async render() { await vm.runInContext("updateData()", context); },
     text(id) { return document.getElementById(id).textContent; },
     html(id) { return document.getElementById(id).innerHTML; },
     hidden(id) { return document.getElementById(id).hidden; },
     charts,
+    requests,
+    setStatus(nextStatus) { response = nextStatus; },
+    async clickRange(range) { await rangeButtons.find((button) => button.dataset.range === range).click(); },
+    rangePressed(range) { return rangeButtons.find((button) => button.dataset.range === range).attrs["aria-pressed"]; },
   };
 }
 
@@ -225,4 +245,58 @@ test("recovery in window does not paint an earlier confirmed outage at the windo
   await app.render();
   assert.equal(app.html("outage-track"), "");
   assert.match(app.html("outage-list"), /Recovery observed/);
+});
+
+test("range selector switches charts and outage window without replacing the live status", async () => {
+  const histories = {
+    byRange: {
+      "15m": apiHistory("range-views", "15m"),
+      "24h": apiHistory("range-views", "24h"),
+      "7d": apiHistory("range-views", "7d"),
+    },
+  };
+  const app = desktop(apiStatus("range-views"), histories, true, true);
+  await app.render();
+  await app.clickRange("15m");
+  assert.equal(app.text("status"), "SERVICE ONLINE");
+  assert.match(app.text("history-window"), /15-minute window/);
+  await app.clickRange("24h");
+  assert.match(app.text("history-window"), /24-hour window/);
+  assert.equal(app.rangePressed("24h"), "true");
+  assert.equal(app.charts[0].options.scales.x.max - app.charts[0].options.scales.x.min, 86400_000);
+  assert.equal(app.charts[0].data.datasets[0].showLine, false);
+  assert.match(app.charts[0].data.datasets[0].data.find((point) => point.y !== null).meta, /observed samples/i);
+  assert.equal(app.text("status"), "SERVICE ONLINE");
+  await app.clickRange("7d");
+  assert.match(app.text("quality-window"), /7-day window/);
+  assert.equal(app.charts[0].options.scales.x.max - app.charts[0].options.scales.x.min, 604800_000);
+  assert.match(app.html("outage-list"), /NO_PINGS/);
+  assert.equal(app.text("status"), "SERVICE ONLINE");
+  assert.ok(app.requests.some((url) => url.endsWith("/api/history?range=7d")));
+  const weekFetches = app.requests.filter((url) => url.endsWith("/api/history?range=7d")).length;
+  app.setStatus(apiStatus("service-offline"));
+  await app.render();
+  assert.equal(app.text("status"), "SERVICE OFFLINE");
+  assert.equal(app.requests.filter((url) => url.endsWith("/api/history?range=7d")).length, weekFetches);
+});
+
+test("switching to a slow 7-day view clears the old chart and labels while it loads", async () => {
+  let finishWeek;
+  const pendingWeek = new Promise((resolve) => { finishWeek = resolve; });
+  const histories = { byRange: {
+    "15m": apiHistory("range-views", "15m"),
+    "7d": pendingWeek,
+  } };
+  const app = desktop(apiStatus("range-views"), histories, true, true);
+  await app.clickRange("15m");
+  assert.match(app.text("history-window"), /15-minute window/);
+  assert.ok(app.charts[0].data.datasets[0].data.length > 0);
+  const switching = app.clickRange("7d");
+  assert.equal(app.rangePressed("7d"), "true");
+  assert.match(app.text("history-window"), /Loading 7-day history/);
+  assert.equal(app.charts[0].data.datasets[0].data.length, 0);
+  assert.equal(app.html("outage-track"), "");
+  finishWeek(apiHistory("range-views", "7d"));
+  await switching;
+  assert.match(app.text("history-window"), /7-day window/);
 });

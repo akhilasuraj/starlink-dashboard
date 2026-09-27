@@ -5,6 +5,11 @@ let latencyChart = null;
 let lossChart = null;
 let currentTab = "network";
 let autoScrollLogs = true;
+let historyRange = "15m";
+let lastHistoryFetchRange = null;
+let lastHistoryFetchMs = 0;
+const HISTORY_REFRESH_MS = { "15m": 2000, "24h": 60000, "7d": 300000 };
+const HISTORY_RANGE_LABELS = { "15m": "15-minute", "24h": "24-hour", "7d": "7-day" };
 
 function createHistoryChart(canvasId, datasets, unit) {
   const canvas = document.getElementById(canvasId);
@@ -152,9 +157,9 @@ function renderStatus(status) {
 function renderHistory(history) {
   const samples = Array.isArray(history && history.samples) ? history.samples : [];
   const coverage = history && history.coverage_start && history.coverage_end
-    ? `Observed ${new Date(history.coverage_start).toLocaleTimeString()}–${new Date(history.coverage_end).toLocaleTimeString()}`
+    ? `Observed ${new Date(history.coverage_start).toLocaleString()}–${new Date(history.coverage_end).toLocaleString()}`
     : "No observed samples";
-  const duration = history && history.window_seconds === 900 ? "15-minute" : "History";
+  const duration = HISTORY_RANGE_LABELS[history && history.range] || "History";
   const windowText = `${duration} window · ${coverage}`;
   byId("history-window").textContent = windowText;
   byId("quality-window").textContent = windowText;
@@ -172,9 +177,14 @@ function renderHistory(history) {
       const captured = valid ? new Date(reading.observed_at).toLocaleString() : "";
       const timeBasis = reading && reading.time_basis || sample.time_basis;
       const basis = timeBasis === "estimated_from_poll" ? "Estimated sample time" :
-        timeBasis === "observed_poll" ? "Observed poll time" : "Uncollected";
+        timeBasis === "observed_poll" ? "Observed poll time" :
+          timeBasis === "rollup" ? "Observed-sample average" : "Uncollected";
+      const coverageNote = valid && timeBasis === "rollup"
+        ? ` · ${reading.sample_count} observed samples in ${history.bucket_seconds / 60}-minute bucket` +
+          ` · Observed ${new Date(sample.observed_start).toLocaleString()}–${new Date(sample.observed_end).toLocaleString()}`
+        : "";
       return { x, y: valid ? reading.value * multiplier : null,
-        meta: `${source}${captured ? ` · Captured ${captured}` : ""} · ${basis}` };
+        meta: `${source}${captured ? ` · Captured ${captured}` : ""} · ${basis}${coverageNote}` };
     }).filter(Boolean);
   }
 
@@ -184,6 +194,10 @@ function renderHistory(history) {
     if (!chart) continue;
     if (Number.isFinite(start)) chart.options.scales.x.min = start;
     if (Number.isFinite(end)) chart.options.scales.x.max = end;
+    for (const dataset of chart.data.datasets) {
+      dataset.showLine = history && history.range === "15m";
+      dataset.pointRadius = history && history.range === "15m" ? 1 : 3;
+    }
   }
   if (speedChart) {
     speedChart.data.datasets[0].data = series("download_mbps");
@@ -230,6 +244,59 @@ function renderOutages(history, start, end) {
   }).join("") || "No dish-reported outages in this window";
 }
 
+async function updateHistory(force = false) {
+  const requestedRange = historyRange;
+  const now = Date.now();
+  if (!force && lastHistoryFetchRange === requestedRange &&
+      now - lastHistoryFetchMs < HISTORY_REFRESH_MS[requestedRange]) return;
+  lastHistoryFetchRange = requestedRange;
+  lastHistoryFetchMs = now;
+  try {
+    const response = await fetch(`${API_URL}/api/history?range=${requestedRange}`);
+    if (!response.ok) throw new Error(`History API: HTTP ${response.status}`);
+    const history = await response.json();
+    if (requestedRange === historyRange) renderHistory(history);
+  } catch (error) {
+    if (requestedRange === historyRange) {
+      lastHistoryFetchMs = 0;
+      const label = HISTORY_RANGE_LABELS[requestedRange];
+      for (const id of ["history-window", "quality-window", "outage-window"]) {
+        byId(id).textContent = `${label} history unavailable`;
+      }
+      byId("history-time-note").textContent = "Retrying collection history";
+      byId("outage-list").textContent = "Outage history unavailable";
+    }
+    console.error("History fetch failed:", error);
+  }
+}
+
+function showHistoryLoading(range) {
+  const label = HISTORY_RANGE_LABELS[range];
+  for (const id of ["history-window", "quality-window", "outage-window"]) {
+    byId(id).textContent = `Loading ${label} history…`;
+  }
+  byId("history-time-note").textContent = "Loading observed samples and gaps";
+  byId("outage-track").innerHTML = "";
+  byId("outage-list").textContent = "Loading dish-reported outages";
+  for (const chart of [speedChart, latencyChart, lossChart]) {
+    if (!chart) continue;
+    for (const dataset of chart.data.datasets) dataset.data = [];
+    chart.update("none");
+  }
+}
+
+function setHistoryRange(range) {
+  if (!(range in HISTORY_REFRESH_MS)) return;
+  historyRange = range;
+  document.querySelectorAll(".history-range-btn").forEach((button) => {
+    const active = button.dataset.range === range;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  showHistoryLoading(range);
+  return updateHistory(true);
+}
+
 async function updateData() {
   try {
     const response = await fetch(`${API_URL}/api/status`);
@@ -241,12 +308,7 @@ async function updateData() {
     byId("guidance").hidden = false;
     console.error("Status fetch failed:", error);
   }
-  try {
-    const response = await fetch(`${API_URL}/api/history`);
-    if (response.ok) renderHistory(await response.json());
-  } catch (error) {
-    console.error("History fetch failed:", error);
-  }
+  await updateHistory();
 }
 
 function escapeHtml(value) {
@@ -276,6 +338,8 @@ async function updateLogs() {
 
 document.addEventListener("DOMContentLoaded", () => {
   initChart();
+  document.querySelectorAll(".history-range-btn").forEach((button) =>
+    button.addEventListener("click", () => setHistoryRange(button.dataset.range)));
   document.querySelectorAll(".tab-btn").forEach((button) => button.addEventListener("click", () => {
     currentTab = button.dataset.tab;
     document.querySelectorAll(".tab-btn").forEach((item) => item.classList.remove("active"));

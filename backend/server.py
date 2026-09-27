@@ -5,6 +5,7 @@ from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import logging
+from typing import Literal
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -175,10 +176,10 @@ class Collector:
             "device": device,
         }
 
-    def history(self):
+    def history(self, range_name="15m"):
         if self.history_store is None:
             self.history_store = HistoryStore(default_history_path())
-        return self.history_store.window(self.now(), 900)
+        return self.history_store.window(self.now(), range_name)
 
 
 @asynccontextmanager
@@ -214,8 +215,8 @@ async def get_status():
 
 
 @app.get("/api/history")
-async def get_history():
-    return app.state.collector.history()
+async def get_history(range: Literal["15m", "24h", "7d"] = "15m"):
+    return await asyncio.to_thread(app.state.collector.history, range)
 
 
 @app.get("/api/logs")
