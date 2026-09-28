@@ -1,0 +1,15 @@
+{
+  "state": "CONNECTED",
+  "id": "ut-fixture",
+  "hardware_version": "rev4",
+  "software_version": "firmware-fixture",
+  "downlink_throughput_bps": 0,
+  "uplink_throughput_bps": 0,
+  "pop_ping_latency_ms": 37.5,
+  "pop_ping_drop_rate": 0,
+  "fraction_obstructed": 0.01,
+  "uptime": 3600,
+  "gps_sats": 12,
+  "direction_azimuth": null,
+  "direction_elevation": null
+}

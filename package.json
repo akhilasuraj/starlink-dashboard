@@ -1,13 +1,18 @@
 {
   "name": "starlink-dashboard",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Starlink Statistics Dashboard",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "dist": "set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win --config"
+    "start": "npm run install:runtime && electron .",
+    "test": "node --test tests/desktop-smoke.test.js tests/main-process-smoke.test.js tests/release-gate.test.js",
+    "build:collector": ".venv\\Scripts\\python.exe build/build-collector.py",
+    "build": "npm run build:collector && electron-builder --publish never",
+    "build:win": "npm run build:collector && electron-builder --win --publish never",
+    "dist": "npm run build:win",
+    "install:runtime": "node node_modules/electron/install.js",
+    "test:collector-package": "node --test tests/packaged-collector.test.js",
+    "test:app-package": "node tests/packaged-app-smoke.js"
   },
   "keywords": [
     "starlink",
@@ -30,7 +35,6 @@
         }
       ],
       "icon": "build/icon.ico",
-      "sign": null,
       "verifyUpdateCodeSignature": false
     },
     "nsis": {
@@ -48,38 +52,30 @@
     },
     "extraResources": [
       {
-        "from": "backend",
-        "to": "backend",
+        "from": "build/collector-dist/starlink-collector",
+        "to": "collector",
         "filter": [
           "**/*"
         ]
-      },
-      {
-        "from": "requirements.txt",
-        "to": "requirements.txt"
-      },
-      {
-        "from": "build/setup-python-deps.bat",
-        "to": "../setup-python-deps.bat"
-      },
-      {
-        "from": "build/check-dependencies.bat",
-        "to": "../check-dependencies.bat"
       }
     ],
     "files": [
       "main.js",
       "preload.js",
       "renderer/**/*",
+      "assets/**/*",
       "package.json"
     ]
   },
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3"
   },
   "dependencies": {
-    "canvas": "^3.2.0",
-    "chart.js": "^4.4.1"
+    "chart.js": "4.5.1"
+  },
+  "packageManager": "npm@12.1.0",
+  "engines": {
+    "node": ">=24 <25"
   }
 }

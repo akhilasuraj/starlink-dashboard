@@ -1,0 +1,11 @@
+{
+  "state": "NO_PINGS",
+  "id": "ut-fixture",
+  "hardware_version": "rev4",
+  "software_version": "firmware-fixture",
+  "downlink_throughput_bps": 0,
+  "uplink_throughput_bps": 0,
+  "pop_ping_latency_ms": null,
+  "pop_ping_drop_rate": 1,
+  "uptime": 3610
+}

@@ -1,221 +1,47 @@
 # Starlink Dashboard
 
-A modern desktop application for monitoring your Starlink connection statistics in real-time.
+A Windows desktop monitor for dish-reported service state, observed traffic, latency, packet loss, outages, and obstruction context.
 
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+## Install and use
 
-## Features
+Use Windows 10/11 x64 and connect the PC to the Starlink LAN. The Windows installer bundles the collector, Python runtime, and dependencies. Installation does not download packages or require Python, pip, or a Python PATH entry.
 
-- 📊 **Real-time speed graphs** - Download/Upload throughput visualization
-- 📡 **Connection monitoring** - Live status updates every 2 seconds
-- 🛰️ **Dish alignment info** - Azimuth, elevation, and tilt angles
-- 🌐 **GPS satellite tracking** - Number of satellites visible
-- ⚡ **Latency monitoring** - Pop ping latency in milliseconds
-- 🌡️ **Obstruction detection** - Visual percentage and warnings
-- 🔄 **Auto-start on boot** - Runs automatically when Windows starts
-- 🎨 **Dark theme UI** - Easy on the eyes
-- 📋 **Real-time logs** - Backend debugging and monitoring
-- 🔔 **System tray integration** - Runs quietly in the background
+Run the installer from `dist/` after building, then launch Starlink Dashboard. Closing the window keeps monitoring in the tray; **Quit** stops both the desktop and collector. Start on sign-in is opt-in under **Device** and can be turned off there.
 
-## Screenshots
+The tray distinguishes online, reported impairment, reported offline service, dish unreachable, stale readings, and collector failure. Dish reachability does not prove service availability. Idle traffic is a measured zero, not a speed test.
 
-### Network Dashboard
+Switch between 15-minute, 24-hour, and 7-day observed history. Missing collection time remains a gap. Longer views show observed coverage, and device fields that are absent or old say unavailable or stale. History remains in `%LOCALAPPDATA%\Starlink Dashboard\history.sqlite3` across app restarts. Router details are optional. Obstruction directional samples show reported signal context; there is no desktop camera scan.
 
-View real-time download/upload speeds with historical graphs.
+Quality shows **Observed ping success** for the selected window, with valid sample count and observed span. It averages valid ping-loss fractions, weights longer-view buckets by sample count, and excludes uncollected time. Dish uptime measures time since reboot; the percentage does not establish continuous service uptime.
 
-### Device Information
+With bypass mode or a third-party router, a route to dish address `192.168.100.1` through the Starlink WAN interface may be needed. See [troubleshooting](TROUBLESHOOTING.md).
 
-Hardware version, software version, GPS stats, and dish alignment.
+## Development
 
-### Live Logs
-
-Real-time backend logs for debugging and monitoring.
-
-## For End Users
-
-### Requirements
-
-- **Operating System**: Windows 10/11 (64-bit)
-- **Python**: 3.7 or later ([Download Python](https://www.python.org/downloads/))
-  - ⚠️ **Important**: Check "Add Python to PATH" during installation
-- **Network**: Connected to Starlink network (dish accessible at 192.168.100.1)
-
-### Installation
-
-1. **Download** the installer: `Starlink Dashboard Setup 1.0.0.exe`
-2. **Run** the installer and follow the wizard
-3. **Install Python dependencies** when prompted (or run `setup-python-deps.bat` later)
-4. **Launch** the app - it will appear in your system tray
-
-### Usage
-
-- **System Tray Icon**: Color indicates status
-  - 🟢 Green = Online
-  - 🟡 Yellow = Obstructed
-  - 🔴 Red = Offline/Disconnected
-- **Open Dashboard**: Right-click tray icon → "Open Dashboard"
-- **View Logs**: Click the "LOGS" tab for real-time backend activity
-- **Quit**: Right-click tray icon → "Quit"
-- **Auto-start**: App launches automatically on Windows startup
-
-### Troubleshooting
-
-If you see "Starlink is disconnected":
-
-1. **Check Python dependencies**:
-
-   - Run `check-dependencies.bat` from the installation folder
-   - Or run `setup-python-deps.bat` to install missing packages
-
-2. **Verify Python installation**:
-
-   ```cmd
-   python --version
-   ```
-
-   Should show Python 3.7 or later
-
-3. **Check Starlink connection**:
-   - Ensure you're connected to the Starlink network
-   - Try opening http://192.168.100.1 in your browser
-
-For more help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-
-## For Developers
-
-### Development Setup
-
-1. **Clone the repository**:
-
-   ```bash
-   git clone <repository-url>
-   cd starlink
-   ```
-
-2. **Install Node.js dependencies**:
-
-   ```bash
-   npm install
-   ```
-
-3. **Install Python dependencies**:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Run in development mode**:
-
-   ```bash
-   # Terminal 1: Start Python backend
-   python backend/server.py
-
-   # Terminal 2: Start Electron app
-   npm start
-   ```
-
-The app will launch with DevTools open for debugging.
-
-### Building the Installer
-
-**Recommended (with admin privileges)**:
+Build requirements: Windows x64, Python 3.13 (CI pins 3.13.15), Node.js 24, and npm. These tools are needed on the build machine only.
 
 ```powershell
-.\build-installer-admin.ps1
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt -r requirements-test.txt
+npm ci
+npm run install:runtime
+npm start
 ```
 
-This automatically requests administrator privileges needed for symbolic link creation.
+The desktop owns the collector process in development too. Do not start a separate public API server. The collector binds an OS-selected loopback port and requires a per-process session secret. Only the main process holds the endpoint and secret; the preload exposes fixed status/history/log methods. The renderer cannot connect to the network.
 
-**Alternative (manual admin)**:
+### Verify and build
 
-```bash
-# Right-click → Run as Administrator
-.\build-installer.bat
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s backend/tests
+npm test
+npm run build:win
+npm run test:collector-package
+npm run test:app-package
 ```
 
-**Or using npm directly**:
+`build:win` creates a PyInstaller one-folder collector, packages it as an Electron resource, and produces the NSIS installer under `dist/`. Publishing is disabled in these commands. Runtime dependencies are pinned in `requirements-runtime-lock.txt`, build/test tools separately, and Node dependencies in `package-lock.json`.
 
-```bash
-npm run dist
-```
+The app packaging smoke uses a temporary data directory, strips Python environment entries, enables a local inspector only for the check, verifies the actual window/preload/chart library, duplicate-launch handling, and collector cleanup. It reads startup settings but never changes them.
 
-The installer will be created at: `dist/Starlink Dashboard Setup 1.0.0.exe`
-
-### Distribution
-
-Share the installer file with others. The installer includes:
-
-- ✅ Application files and resources
-- ✅ Python backend scripts
-- ✅ Setup helper scripts (`setup-python-deps.bat`, `check-dependencies.bat`)
-- ✅ Auto-startup registry configuration
-- ✅ Desktop and Start Menu shortcuts
-
-### Project Structure
-
-```
-starlink/
-├── backend/
-│   └── server.py              # FastAPI backend server
-├── renderer/
-│   ├── index.html             # Main UI
-│   ├── styles.css             # Styling
-│   └── app.js                 # Frontend logic + Chart.js
-├── build/
-│   ├── installer.nsh          # NSIS installer script
-│   ├── setup-python-deps.bat  # Dependency installer
-│   └── check-dependencies.bat # Dependency checker
-├── main.js                    # Electron main process
-├── preload.js                 # Preload script for security
-├── package.json               # Node dependencies & build config
-├── requirements.txt           # Python dependencies
-├── build-installer-admin.ps1  # Installer build script (admin)
-├── build-installer.bat        # Installer build script (basic)
-└── README.md                  # This file
-```
-
-### API Endpoints
-
-The Python backend exposes the following REST API:
-
-- `GET /api/status` - Current Starlink status and statistics
-- `GET /api/history` - Speed history for graphing (last 30 data points)
-- `GET /api/logs` - Recent backend logs (last 200 entries)
-- `GET /health` - Health check endpoint
-
-### Tech Stack
-
-- **Backend**:
-  - Python 3.7+
-  - FastAPI (REST API framework)
-  - starlink-client (gRPC client for Starlink dish)
-  - uvicorn (ASGI server)
-- **Frontend**:
-  - Electron 28 (Desktop app framework)
-  - Chart.js 4 (Data visualization)
-  - Vanilla JavaScript (No heavy frameworks)
-- **Packaging**:
-  - electron-builder (Installer creation)
-  - NSIS (Windows installer)
-
-### Development Notes
-
-- Backend polls Starlink every 2 seconds
-- Frontend updates UI every 2 seconds
-- Logs update every 1 second when LOGS tab is active
-- Keeps last 200 log messages in memory
-- Auto-scrolls logs if user is at bottom
-
-## Contributing
-
-Feel free to submit issues and pull requests!
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Acknowledgments
-
-- [starlink-client](https://github.com/sparky8512/starlink-grpc-tools) - Python gRPC client for Starlink
-- Built with ❤️ for Starlink users
+The single [desktop workflow](.github/workflows/desktop-release.yml) runs behavioral tests, builds, packaging smokes, and offline installation on a disposable hosted Windows runner. Local builds never publish. Publication requires a separate manual request, the exact offline-tested installer bytes, and accepted live hardware evidence or explicit acknowledgment of its limitations. See [release verification](docs/release-verification.md).

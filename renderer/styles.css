@@ -36,6 +36,43 @@ body {
   font-size: 12px;
 }
 
+.header .guidance {
+  margin: 12px auto 0;
+  max-width: 520px;
+  color: #ffd600;
+  line-height: 1.45;
+}
+
+.reading-meta {
+  color: #aaa;
+  font-size: 11px;
+  margin-top: 7px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.history-range-selector {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+
+.history-range-btn {
+  padding: 6px 12px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #bbb;
+  background: #252525;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.history-range-btn.active {
+  color: #fff;
+  border-color: #00c853;
+}
+
 /* Tabs */
 .tabs {
   display: flex;
@@ -136,6 +173,37 @@ body {
   min-height: 0;
 }
 
+.quality-chart {
+  height: 150px;
+  margin-top: 10px;
+}
+
+.outage-track {
+  position: relative;
+  height: 18px;
+  margin: 12px 0;
+  background: #171717;
+  border: 1px solid #555;
+  border-radius: 3px;
+}
+
+.outage-segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  background: #d50000;
+  border-radius: 2px;
+}
+
+.outage-list {
+  color: #ddd;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.outage-event { margin-top: 5px; }
+
 /* Visibility */
 .obstruction-info {
   text-align: center;
@@ -144,6 +212,22 @@ body {
 
 .obstruction-info h3 {
   margin-bottom: 20px;
+}
+
+.snr-grid {
+  display: grid;
+  gap: 2px;
+  width: min(100%, 420px);
+  margin: 18px auto;
+}
+
+.snr-cell {
+  aspect-ratio: 1;
+  min-width: 2px;
+}
+
+.snr-cell.invalid {
+  background: #353535;
 }
 
 .progress-bar {
@@ -215,6 +299,13 @@ body {
   font-size: 12px;
   color: #888;
   margin-bottom: 15px;
+}
+
+.alert-summary {
+  margin-top: 8px;
+  color: #ffd600;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .stat-item-chart {

@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'" />
     <title>Starlink Dashboard</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="../node_modules/chart.js/dist/chart.umd.js"></script>
@@ -12,13 +13,22 @@
       <!-- Header -->
       <div class="header">
         <h1 id="status">CONNECTING...</h1>
-        <p id="uptime">Uptime: --</p>
+        <p id="collection-state">Waiting for collector</p>
+        <p id="observed-at">No reading yet</p>
+        <p id="guidance" class="guidance" hidden></p>
+      </div>
+
+      <div class="history-range-selector" role="group" aria-label="History time range">
+        <button class="history-range-btn active" data-range="15m" aria-pressed="true">15 MIN</button>
+        <button class="history-range-btn" data-range="24h" aria-pressed="false">24 HOURS</button>
+        <button class="history-range-btn" data-range="7d" aria-pressed="false">7 DAYS</button>
       </div>
 
       <!-- Tabs -->
       <div class="tabs">
         <button class="tab-btn active" data-tab="network">NETWORK</button>
         <button class="tab-btn" data-tab="statistics">STATISTICS</button>
+        <button class="tab-btn" data-tab="obstruction">OBSTRUCTION</button>
         <button class="tab-btn" data-tab="device">DEVICE</button>
         <button class="tab-btn" data-tab="logs">LOGS</button>
       </div>
@@ -29,101 +39,125 @@
         <div id="network" class="tab-pane active">
           <div class="stats-row">
             <div class="stat-card">
-              <div class="stat-label">DOWNLOAD</div>
+              <div class="stat-label">CURRENT DOWNLOAD TRAFFIC</div>
               <div class="stat-value" id="download">--</div>
               <div class="stat-unit">Mbps</div>
+              <div class="reading-meta" id="download-meta">Unavailable</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">UPLOAD</div>
+              <div class="stat-label">CURRENT UPLOAD TRAFFIC</div>
               <div class="stat-value" id="upload">--</div>
               <div class="stat-unit">Mbps</div>
+              <div class="reading-meta" id="upload-meta">Unavailable</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">LATENCY</div>
               <div class="stat-value" id="latency">--</div>
               <div class="stat-unit">ms</div>
+              <div class="reading-meta" id="latency-meta">Unavailable</div>
             </div>
           </div>
           <div class="graph-container">
+            <p id="history-window" class="reading-meta">Last 15 minutes · No observations yet</p>
+            <p id="traffic-explainer" class="reading-meta">Dish traffic is current usage, not a speed test or available capacity.</p>
             <canvas id="speedChart"></canvas>
+            <p id="history-time-note" class="reading-meta">Waiting for history</p>
           </div>
         </div>
 
         <!-- Statistics Tab -->
         <div id="statistics" class="tab-pane">
           <div class="stats-list">
-            <!-- Ping Success -->
+            <p id="quality-window" class="reading-meta">Last 15 minutes · No observations yet</p>
+            <div class="stat-item">
+              <div class="stat-item-header"><span class="stat-item-title">Observed ping success</span></div>
+              <div class="stat-item-value"><span class="stat-large" id="ping-success">--</span><span class="stat-unit">%</span></div>
+              <p id="ping-success-meta" class="reading-meta">No valid ping observations</p>
+              <p class="reading-meta">Valid observed ping samples only; uncollected time is excluded. Dish uptime below measures time since reboot.</p>
+            </div>
             <div class="stat-item">
               <div class="stat-item-header">
-                <span class="stat-item-title">Ping success</span>
+                <span class="stat-item-title">Current ping drop rate</span>
               </div>
               <div class="stat-item-value">
-                <span class="stat-large" id="ping-success">--</span>
+                <span class="stat-large" id="drop-rate">--</span>
                 <span class="stat-unit">%</span>
               </div>
-              <div class="stat-item-subtitle">last 15 minutes</div>
-              <div class="stat-item-chart">
-                <canvas id="pingChart" height="30"></canvas>
-              </div>
+              <div class="stat-item-subtitle" id="drop-rate-meta">Unavailable</div>
             </div>
-
-            <!-- Latency -->
             <div class="stat-item">
               <div class="stat-item-header">
-                <span class="stat-item-title">Latency</span>
+                <span class="stat-item-title">Current latency</span>
               </div>
               <div class="stat-item-value">
                 <span class="stat-large" id="latency-stat">--</span>
                 <span class="stat-unit">ms</span>
               </div>
-              <div class="stat-item-subtitle">median, last 15 minutes</div>
-              <div class="stat-item-chart">
-                <canvas id="latencyChart" height="30"></canvas>
-              </div>
+              <div class="stat-item-subtitle" id="latency-stat-meta">Unavailable</div>
             </div>
-
-            <!-- Power Draw -->
             <div class="stat-item">
               <div class="stat-item-header">
-                <span class="stat-item-title">Power draw</span>
+                <span class="stat-item-title">Dish uptime since reboot</span>
               </div>
               <div class="stat-item-value">
-                <span class="stat-large" id="power-draw">--</span>
-                <span class="stat-unit">W</span>
+                <span class="stat-large" id="dish-uptime">--</span>
               </div>
-              <div class="stat-item-subtitle">average, last 15 minutes</div>
-              <div class="stat-item-chart">
-                <canvas id="powerChart" height="30"></canvas>
-              </div>
+              <div class="stat-item-subtitle" id="dish-uptime-meta">Unavailable</div>
             </div>
-
-            <!-- Throughput -->
             <div class="stat-item">
-              <div class="stat-item-header">
-                <span class="stat-item-title">Throughput</span>
-              </div>
-              <div class="stat-item-value">
-                <span class="stat-large" id="throughput">--</span>
-                <span class="stat-unit">Mbps</span>
-              </div>
-              <div class="stat-item-subtitle">download</div>
-              <div class="stat-item-chart">
-                <canvas id="throughputChart" height="30"></canvas>
-              </div>
+              <div class="stat-item-title">Dish alerts</div>
+              <div id="dish-alerts" class="alert-summary">Dish alerts unavailable</div>
+              <div id="dish-alerts-meta" class="reading-meta">Not reported by this dish</div>
             </div>
+            <div class="stat-item">
+              <div class="stat-item-title">Latency · last 15 minutes</div>
+              <div class="quality-chart"><canvas id="latencyChart"></canvas></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-title">Ping drop rate · last 15 minutes</div>
+              <div class="quality-chart"><canvas id="lossChart"></canvas></div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-title">Dish-reported outages</div>
+              <p id="outage-window" class="reading-meta">Last 15 minutes · No observations yet</p>
+              <div id="outage-track" class="outage-track" aria-label="Dish-reported outage intervals"></div>
+              <div id="outage-list" class="outage-list">No dish-reported outages in this window</div>
+              <p id="outage-note" class="reading-meta">Blank time and collector gaps are not confirmed outages. Event boundaries are limited to observed dish states.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Obstruction Tab -->
+        <div id="obstruction" class="tab-pane">
+          <div class="obstruction-info">
+            <h3 id="obstruction-text">Obstruction: Unavailable</h3>
+            <p class="reading-meta" id="obstruction-meta">Unavailable</p>
+            <div id="obstruction-progress" class="progress-bar" hidden>
+              <div id="obstruction-bar" class="progress-fill"></div>
+            </div>
+            <p id="obstruction-current">Currently obstructed: Unavailable</p>
+            <p class="reading-meta" id="obstruction-current-meta">Unavailable</p>
+            <h3>Directional SNR samples</h3>
+            <p class="reading-meta">Directional SNR samples indicate received signal by direction; they are not an exact obstruction outline or a camera view.</p>
+            <p class="reading-meta" id="obstruction-snr-meta">Not reported by this dish or firmware</p>
+            <div id="obstruction-snr-grid" class="snr-grid" role="img" aria-label="Dish directional signal-to-noise ratio samples"></div>
           </div>
         </div>
 
         <!-- Device Tab -->
         <div id="device" class="tab-pane">
-          <div class="obstruction-info">
-            <h3 id="obstruction-text">Obstructed: 0%</h3>
-            <div class="progress-bar">
-              <div id="obstruction-bar" class="progress-fill"></div>
-            </div>
+          <div class="device-section">
+            <h3>DESKTOP</h3>
+            <label><input id="start-on-login" type="checkbox" disabled /> Start on sign-in</label>
+            <p id="start-on-login-status" class="reading-meta">Reading startup setting…</p>
+            <p class="reading-meta">Closing the window keeps monitoring in the tray. Choose Quit from the tray menu to stop the app and collector.</p>
           </div>
           <div class="device-section">
             <h3>DETAILS</h3>
+            <div class="device-row">
+              <span>Dish ID</span>
+              <span id="dish-id">Unavailable</span>
+            </div>
             <div class="device-row">
               <span>Hardware</span>
               <span id="hardware">--</span>
@@ -133,17 +167,18 @@
               <span id="software">--</span>
             </div>
             <div class="device-row">
-              <span>GPS Sats</span>
+              <span>GPS reception · satellites</span>
               <span id="gps-sats">--</span>
             </div>
-            <div class="device-row">
-              <span>Eth Speed</span>
-              <span id="eth-speed">--</span>
-            </div>
-            <div class="device-row">
-              <span>Heater</span>
-              <span id="heater">--</span>
-            </div>
+            <p class="reading-meta">Hover over a value for its source and observation time. Unavailable means the device did not report it.</p>
+            <p id="device-capabilities" class="reading-meta">Dish diagnostics: unavailable · Router diagnostics: unavailable · Dish alerts: unavailable</p>
+          </div>
+          <div class="device-section">
+            <h3>OPTIONAL STARLINK ROUTER</h3>
+            <div class="device-row"><span>Router ID</span><span id="router-id">Unavailable</span></div>
+            <div class="device-row"><span>Hardware</span><span id="router-hardware">Unavailable</span></div>
+            <div class="device-row"><span>Software</span><span id="router-software">Unavailable</span></div>
+            <p class="reading-meta">Router details are unavailable with some network setups, including bypass mode and third-party routers.</p>
           </div>
           <div class="device-section">
             <h3>ALIGNMENT</h3>

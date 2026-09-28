@@ -1,226 +1,279 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage } = require("electron");
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const { spawn } = require("child_process");
+const { randomBytes } = require("crypto");
+const APP_ID = "com.starlink.dashboard";
 
 let tray = null;
+let trayState = null;
 let mainWindow = null;
 let backendProcess = null;
+let statusTimer = null;
+let restartTimer = null;
+let shutdownTimer = null;
+let statusInFlight = false;
+let restartDelay = 1000;
 let isQuitting = false;
+let shutdownComplete = false;
+let sessionEnding = false;
+let collectorSession = null;
 
-// Start Python backend
-function startBackend() {
-  const pythonPath = "python"; // or 'python3' on some systems
-
-  // In production (packaged), backend is in resources folder
-  // In development, it's in the project root
-  let backendDir;
-  if (app.isPackaged) {
-    backendDir = path.join(process.resourcesPath, "backend");
-  } else {
-    backendDir = path.join(__dirname, "backend");
-  }
-
-  const scriptPath = path.join(backendDir, "server.py");
-
-  console.log(`Starting backend from: ${scriptPath}`);
-
-  backendProcess = spawn(pythonPath, [scriptPath], {
-    cwd: backendDir, // Set working directory to backend folder
+async function collectorRequest(route, method = "GET", timeout = 15000) {
+  const session = collectorSession;
+  if (!session || !session.port) throw new Error("Collector is starting or unavailable");
+  const response = await fetch(`http://127.0.0.1:${session.port}${route}`, {
+    method, headers: { Authorization: `Bearer ${session.token}` },
+    signal: AbortSignal.timeout(timeout),
   });
-
-  backendProcess.stdout.on("data", (data) => {
-    console.log(`Backend: ${data}`);
-  });
-
-  backendProcess.stderr.on("data", (data) => {
-    console.error(`Backend Error: ${data}`);
-  });
-
-  backendProcess.on("close", (code) => {
-    console.log(`Backend exited with code ${code}`);
-  });
-
-  backendProcess.on("error", (err) => {
-    console.error(`Failed to start backend: ${err.message}`);
-    console.error(`Backend path: ${scriptPath}`);
-    console.error(`Python path: ${pythonPath}`);
-    // Show error to user after a delay to ensure window is ready
-    setTimeout(() => {
-      if (mainWindow && mainWindow.webContents) {
-        mainWindow.webContents
-          .executeJavaScript(
-            `
-          alert('Python backend failed to start. Please ensure Python 3.7+ is installed and added to PATH.\\n\\nError: ${err.message.replace(
-            /'/g,
-            "\\'"
-          )}');
-        `
-          )
-          .catch(console.error);
-      }
-    }, 3000);
-  });
+  if (!response.ok) throw new Error(`Collector returned ${response.status}`);
+  const body = await response.json();
+  // A response from an exited session must not replace the current live state.
+  if (session !== collectorSession) throw new Error("Collector session changed");
+  return body;
 }
 
-// Create tray icon
-function createTray() {
-  // Create a simple colored icon (16x16)
-  const icon = nativeImage.createEmpty();
-  tray = new Tray(icon);
+function setTrayHealth(state, label) {
+  if (!tray || isQuitting) return;
+  if (state !== trayState) {
+    tray.setImage(nativeImage.createFromPath(path.join(__dirname, "assets", "tray", `${state}.png`)));
+    trayState = state;
+  }
+  tray.setToolTip(`Starlink: ${label}`);
+}
 
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: "Open Dashboard",
-      click: () => {
-        if (mainWindow) {
-          mainWindow.show();
-        } else {
-          createWindow();
-        }
-      },
-    },
-    {
-      label: "Quit",
-      click: () => {
-        isQuitting = true;
-        if (mainWindow) {
-          mainWindow.destroy();
-        }
-        app.quit();
-      },
-    },
-  ]);
-
-  tray.setToolTip("Starlink Dashboard");
-  tray.setContextMenu(contextMenu);
-
-  tray.on("click", () => {
-    if (mainWindow) {
-      mainWindow.show();
+async function updateTrayStatus() {
+  if (isQuitting || statusInFlight) return;
+  statusInFlight = true;
+  try {
+    const status = await collectorRequest("/api/status", "GET", 1500);
+    restartDelay = 1000;
+    const collection = status && status.collection_state;
+    if (collection === "dish_unreachable") {
+      setTrayHealth("unreachable", "Dish unreachable — service state unknown");
+    } else if (collection === "collector_error") {
+      setTrayHealth("collector-error", "Collector unavailable");
+    } else if (collection === "collecting") {
+      setTrayHealth("collecting", "Collecting");
     } else {
-      createWindow();
-    }
-  });
-
-  // Update tray icon color based on status
-  updateTrayIcon("gray");
-}
-
-function updateTrayIcon(color) {
-  // Create colored icon
-  const size = 16;
-  const canvas = require("canvas").createCanvas(size, size);
-  const ctx = canvas.getContext("2d");
-
-  // Draw circle
-  ctx.fillStyle =
-    color === "green"
-      ? "#00C853"
-      : color === "red"
-      ? "#D50000"
-      : color === "yellow"
-      ? "#FFD600"
-      : "#666666";
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, 2 * Math.PI);
-  ctx.fill();
-
-  const icon = nativeImage.createFromDataURL(canvas.toDataURL());
-  if (tray) {
-    tray.setImage(icon);
-  }
-}
-
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 600,
-    height: 750,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, "preload.js"),
-    },
-    title: "Starlink Dashboard",
-    backgroundColor: "#1a1a1a",
-  });
-
-  mainWindow.loadFile("renderer/index.html");
-
-  // Open DevTools in development mode to see backend logs
-  if (!app.isPackaged) {
-    mainWindow.webContents.openDevTools();
-  }
-
-  mainWindow.on("close", (event) => {
-    if (!isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-    }
-  });
-
-  // Poll status for tray icon updates
-  setInterval(async () => {
-    try {
-      const response = await fetch("http://127.0.0.1:8000/api/status");
-      const data = await response.json();
-
-      if (data.online) {
-        if (data.obstructed_pct > 5) {
-          updateTrayIcon("yellow");
-        } else {
-          updateTrayIcon("green");
-        }
+      const observed = status && Date.parse(status.observed_at);
+      const hasReading = status && typeof status.source === "string" && status.source.trim() && Number.isFinite(observed);
+      if (collection === "stale" || status && status.stale || (hasReading && Date.now() - observed > 6000)) {
+        setTrayHealth("stale", "Data stale — service state unknown");
+      } else if (collection !== "reachable" || !hasReading) {
+        setTrayHealth("unknown", "Service unknown — no current dish reading");
+      } else if (status.service_state === "online") {
+        setTrayHealth("healthy", "Service online");
+      } else if (status.service_state === "impaired") {
+        setTrayHealth("impaired", "Service impaired — dish reports ping loss or current obstruction");
+      } else if (status.service_state === "offline") {
+        setTrayHealth("offline", "Service offline — reported by dish");
       } else {
-        updateTrayIcon("red");
+        setTrayHealth("unknown", "Service unknown");
       }
-
-      tray.setToolTip(`Starlink: ${data.status_text}`);
-    } catch (err) {
-      updateTrayIcon("red");
-      tray.setToolTip("Starlink: Disconnected");
     }
-  }, 2000);
+  } catch (error) {
+    setTrayHealth("collector-error", "Collector unavailable — retrying");
+  } finally {
+    statusInFlight = false;
+  }
 }
 
-app.whenReady().then(() => {
-  // Don't enable auto-start programmatically - the installer handles this
-  // Only enable for development if needed
-  // if (!app.isPackaged && process.platform === "win32") {
-  //   app.setLoginItemSettings({
-  //     openAtLogin: true,
-  //     openAsHidden: true,
-  //   });
-  // }
+function scheduleBackendRestart() {
+  if (isQuitting || restartTimer !== null) return;
+  setTrayHealth("collector-error", "Collector unavailable — restarting");
+  restartTimer = setTimeout(() => {
+    restartTimer = null;
+    startBackend();
+  }, restartDelay);
+  restartDelay = Math.min(restartDelay * 2, 30000);
+}
 
-  startBackend();
+function backendStopped(child) {
+  if (backendProcess !== child) return;
+  backendProcess = null;
+  collectorSession = null;
+  if (isQuitting && !sessionEnding) completeQuit();
+  else if (!isQuitting) scheduleBackendRestart();
+}
 
-  // Wait a bit for backend to start
-  setTimeout(() => {
-    createTray();
-    // Only show window on startup if not started with --hidden flag
-    if (!process.argv.includes("--hidden")) {
-      createWindow();
+function startBackend() {
+  if (isQuitting || backendProcess) return;
+  const developmentPython = path.join(__dirname, ".venv", "Scripts", "python.exe");
+  const executable = app.isPackaged
+    ? path.join(process.resourcesPath, "collector", "starlink-collector.exe") : developmentPython;
+  const args = app.isPackaged ? [] : ["-m", "backend.collector"];
+  const env = { ...process.env, STARLINK_DASHBOARD_SESSION_TOKEN: randomBytes(32).toString("hex") };
+  delete env.PYTHONPATH;
+  delete env.PYTHONHOME;
+  const session = { token: env.STARLINK_DASHBOARD_SESSION_TOKEN, port: null };
+  collectorSession = session;
+  const child = spawn(executable, args, { cwd: app.isPackaged ? path.dirname(executable) : __dirname,
+    env, windowsHide: true });
+  backendProcess = child;
+  let output = "";
+  child.stdout.on("data", (data) => {
+    output += data.toString();
+    const lines = output.split(/\r?\n/);
+    output = lines.pop().slice(-4096);
+    for (const line of lines) {
+      try {
+        const message = JSON.parse(line);
+        if (backendProcess === child && message.event === "collector-listening" &&
+            Number.isInteger(message.port) && message.port > 0 && message.port <= 65535) {
+          session.port = message.port;
+          updateTrayStatus();
+        }
+      } catch { /* Collector stdout carries readiness messages only. */ }
     }
-  }, 2000);
-});
+  });
+  child.stderr.on("data", (data) => console.error(`Backend: ${data}`));
+  child.on("error", (error) => {
+    console.error(`Collector could not start: ${error.message}`);
+    if (backendProcess === child) {
+      setTrayHealth("collector-error", "Collector unavailable — retrying");
+      // Spawn failures have no PID. An error on a running child does not prove
+      // it has exited; wait for close before starting another collector.
+      if (!child.pid) {
+        backendStopped(child);
+      }
+    }
+  });
+  child.on("close", (code) => {
+    console.log(`Collector exited: ${code}`);
+    backendStopped(child);
+  });
+}
 
-app.on("window-all-closed", () => {
-  // On macOS, keep app running, but on Windows allow quit when quitting
-  if (process.platform !== "darwin" && isQuitting) {
-    app.quit();
+function showWindow() {
+  if (isQuitting) return;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    return;
   }
-});
+  createWindow(true);
+}
 
-app.on("before-quit", () => {
+function createWindow(show) {
+  const window = new BrowserWindow({
+    show,
+    width: 600, height: 750, title: "Starlink Dashboard", backgroundColor: "#1a1a1a",
+    webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, "preload.js") },
+  });
+  mainWindow = window;
+  window.webContents.on("will-navigate", (event) => event.preventDefault());
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.loadFile(path.join(__dirname, "renderer", "index.html"));
+  window.on("close", (event) => {
+    if (!isQuitting) { event.preventDefault(); window.hide(); }
+  });
+  window.on("closed", () => { if (mainWindow === window) mainWindow = null; });
+  window.on("session-end", stopForSessionEnd);
+}
+
+function createTray() {
+  tray = new Tray(nativeImage.createFromPath(path.join(__dirname, "assets", "tray", "collecting.png")));
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: "Open Dashboard", click: showWindow },
+    { label: "Quit", click: () => app.quit() },
+  ]));
+  tray.on("click", showWindow);
+  setTrayHealth("collecting", "Collecting");
+}
+
+function loginOptions() {
+  // Electron 44 normalizes surrounding quotes when writing commands; its
+  // launch-item lookup still parses the supplied path as a command line.
+  return { path: `"${process.execPath}"`, args: ["--hidden"] };
+}
+
+function getStartupSetting() {
+  if (process.platform !== "win32" || !app.isPackaged) {
+    return { supported: false, enabled: false, explanation: "Available in the installed Windows app" };
+  }
+  const setting = app.getLoginItemSettings(loginOptions());
+  const legacyEnabled = Array.isArray(setting.launchItems) && setting.launchItems.some((item) =>
+    item.name === "StarlinkDashboard" && item.scope === "user" && item.enabled &&
+    Array.isArray(item.args) && item.args.length === 1 && item.args[0] === "--hidden");
+  return { supported: true, enabled: legacyEnabled ||
+    setting.openAtLogin && setting.executableWillLaunchAtLogin !== false };
+}
+
+function checkSender(event) {
+  if (!mainWindow || event.sender !== mainWindow.webContents ||
+      event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error("Unknown dashboard window or frame");
+}
+
+function completeQuit() {
+  if (shutdownComplete) return;
+  if (shutdownTimer !== null) { clearTimeout(shutdownTimer); shutdownTimer = null; }
+  if (tray) { tray.destroy(); tray = null; }
+  shutdownComplete = true;
+  app.quit();
+}
+
+function stopDesktopTimers() {
   isQuitting = true;
-  if (backendProcess) {
-    console.log("Killing backend process...");
-    backendProcess.kill();
-  }
-});
+  if (statusTimer !== null) { clearInterval(statusTimer); statusTimer = null; }
+  if (restartTimer !== null) { clearTimeout(restartTimer); restartTimer = null; }
+}
 
-app.on("will-quit", () => {
-  if (backendProcess) {
-    backendProcess.kill("SIGTERM");
-  }
-});
+function stopForSessionEnd() {
+  sessionEnding = true;
+  stopDesktopTimers();
+  if (backendProcess) backendProcess.kill("SIGTERM");
+}
+
+function quitWithCollector(event) {
+  if (shutdownComplete) return;
+  event.preventDefault();
+  if (isQuitting) return;
+  stopDesktopTimers();
+  const child = backendProcess;
+  if (!child) { completeQuit(); return; }
+  shutdownTimer = setTimeout(() => child.kill("SIGKILL"), 3000);
+  child.kill("SIGTERM");
+}
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  if (process.platform === "win32") app.setAppUserModelId(APP_ID);
+  app.on("second-instance", showWindow);
+  app.on("activate", showWindow);
+  app.on("window-all-closed", () => {}); // The tray owns the app while the window is hidden.
+  app.on("before-quit", quitWithCollector);
+  process.on("exit", () => { if (backendProcess) backendProcess.kill(); });
+  ipcMain.handle("startup:get", (event) => { checkSender(event); return getStartupSetting(); });
+  ipcMain.handle("collector:status", (event) => {
+    checkSender(event); return collectorRequest("/api/status", "GET", 1500);
+  });
+  ipcMain.handle("collector:history", (event, range) => {
+    checkSender(event);
+    if (!["15m", "24h", "7d"].includes(range)) throw new Error("Unsupported history range");
+    return collectorRequest(`/api/history?range=${range}`);
+  });
+  ipcMain.handle("collector:logs", (event) => { checkSender(event); return collectorRequest("/api/logs"); });
+  ipcMain.handle("collector:clear-logs", (event) => {
+    checkSender(event); return collectorRequest("/api/logs/clear", "POST");
+  });
+  ipcMain.handle("startup:set", (event, enabled) => {
+    checkSender(event);
+    if (typeof enabled !== "boolean" || !getStartupSetting().supported) throw new Error("Startup setting unavailable");
+    // Remove the old installer's forced entry only when the user changes startup.
+    app.setLoginItemSettings({ ...loginOptions(), name: "StarlinkDashboard", openAtLogin: false });
+    app.setLoginItemSettings({ ...loginOptions(), openAtLogin: enabled, enabled });
+    return getStartupSetting();
+  });
+  app.whenReady().then(() => {
+    if (isQuitting) return;
+    createTray();
+    startBackend();
+    // Keep a hidden native window to receive Windows session-end during logoff.
+    createWindow(!process.argv.includes("--hidden"));
+    statusTimer = setInterval(updateTrayStatus, 2000);
+    updateTrayStatus();
+  });
+}

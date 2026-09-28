@@ -1,9 +1,3 @@
-starlink-client
-pystray
-Pillow
-customtkinter
-matplotlib
-scipy
-numpy
-fastapi
-uvicorn
+starlink-grpc-core==1.2.5
+fastapi==0.141.1
+uvicorn==0.54.0

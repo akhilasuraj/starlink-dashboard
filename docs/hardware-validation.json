@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "status": "partial",
+  "owner_acceptance": "pending",
+  "observed_at": "2026-09-28T05:45:46Z",
+  "owner_reported": {
+    "dish_model": "Standard 4",
+    "router_model": "Gen 3 Starlink router",
+    "routing": "PC on Starlink router; no third-party router or bypass",
+    "service_plan": "unknown"
+  },
+  "dish": {
+    "hardware": "rev4_catapult_proto1",
+    "firmware": "2026.09.14.mr86848"
+  },
+  "router": {
+    "hardware": "v3",
+    "firmware": "2026.09.09.mr85833"
+  },
+  "rpc_results": {
+    "status": "success",
+    "router_diagnostics": "success",
+    "dish_diagnostics": "success",
+    "history": "success",
+    "obstruction_map": "success"
+  },
+  "reported_status_fields": [
+    "hardware_version",
+    "software_version",
+    "state",
+    "uptime",
+    "downlink_throughput_bps",
+    "uplink_throughput_bps",
+    "pop_ping_latency_ms",
+    "pop_ping_drop_rate",
+    "fraction_obstructed",
+    "currently_obstructed",
+    "gps_sats"
+  ],
+  "history": {
+    "requested_samples": 900,
+    "observed_samples": 900,
+    "estimated_span_seconds": 900,
+    "time_provenance": "One-second sample counter anchored to local capture time; no dish-provided UTC timestamps"
+  },
+  "collector_recreation": {
+    "collection_state": "reachable",
+    "persisted_samples_before": 900,
+    "persisted_samples_after": 901,
+    "scope": "Live collector and transport instances recreated with the same sanitized SQLite store; no desktop/dish restart"
+  },
+  "capture": {
+    "path": "../backend/tests/fixtures/live-standard4-2026-09-28.json",
+    "sha256": "0aa7057b50074827bf62d244ccee4f07e0b4f7a1d5997d815d70278397f21536"
+  },
+  "limitations": [
+    "Owner acceptance of this hardware record remains pending",
+    "Service plan was not supplied",
+    "No dish/service interruption was induced; reported-outage and long-disconnection behavior remain fixture-tested",
+    "Collector-instance recreation was observed; this is not a live desktop-process restart test"
+  ]
+}
