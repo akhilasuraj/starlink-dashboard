@@ -6,7 +6,7 @@ A Windows desktop monitor for dish-reported service state, observed traffic, lat
 
 Use Windows 10/11 x64 and connect the PC to the Starlink LAN. The Windows installer bundles the collector, Python runtime, and dependencies. Installation does not download packages or require Python, pip, or a Python PATH entry.
 
-Run the installer from `dist/` after building, then launch Starlink Dashboard. Closing the window keeps monitoring in the tray; **Quit** stops both the desktop and collector. Start on sign-in is opt-in under **Device** and can be turned off there.
+Download the Windows x64 installer from [GitHub Releases](https://github.com/akhilasuraj/starlink-dashboard/releases), or use `dist/` after building, then launch Starlink Dashboard. Closing the window keeps monitoring in the tray; **Quit** stops both the desktop and collector. Start on sign-in is opt-in under **Devices** and can be turned off there.
 
 The tray distinguishes online, reported impairment, reported offline service, dish unreachable, stale readings, and collector failure. Dish reachability does not prove service availability. Idle traffic is a measured zero, not a speed test.
 

@@ -1,6 +1,6 @@
 # Release verification
 
-The revival candidate is **1.1.1**. Local builds and ordinary push/PR workflow runs never publish a release. The earlier 1.0.2 installer built during development is historical packaging evidence, not the final candidate artifact.
+The current release candidate is **1.2.0**, the mobile-inspired UI refresh. The earlier revival release was 1.1.1. Local builds and ordinary push/PR workflow runs never publish a release. The earlier 1.0.2 installer built during development is historical packaging evidence, not the final candidate artifact.
 
 ## One workflow
 
@@ -50,3 +50,9 @@ No release is complete merely because local tests or a build passed. Offline CI 
 - [GitHub deployment environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments) describe protected review gates.
 - [Microsoft Disable-NetAdapter](https://learn.microsoft.com/en-us/powershell/module/netadapter/disable-netadapter?view=windowsserver2025-ps) and [NSIS command-line usage](https://nsis.sourceforge.io/Docs/Chapter3.html) inform the isolated offline check.
 - [Starlink gRPC tools](https://github.com/sparky8512/starlink-grpc-tools/blob/main/README.md) defines observed ping-loss sample fractions. Observed ping success is derived from those valid samples; equivalence to the mobile app's uptime calculation is not established.
+
+## 1.2.0 UI release
+
+PR #15 adapts the desktop to current official Starlink mobile imagery and adds an original generated icon. [Fixture UI evidence](validation/ui-refresh/README.md) covers all five views at wide and compact sizes, keyboard activation, history ranges, error/unavailable states, long values and actual chart sizing. All 37 behavioral tests and the 20-screenshot development Electron check passed before the version bump.
+
+Telemetry, storage and private IPC contracts are unchanged. The historical live hardware evidence above remains scoped to its original runtime/source; it is not a live validation of the new UI installer. The new version must pass the full hosted workflow, including an offline install of its exact installer bytes, before publication. Existing acknowledged hardware limitations keep this release a prerelease. [Version notes](releases/v1.2.0.md) describe the changes and validation boundaries.

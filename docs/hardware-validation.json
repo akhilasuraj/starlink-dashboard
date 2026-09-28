@@ -56,7 +56,7 @@
   "limitations": [
     "Service plan was not supplied",
     "No dish/service outage was induced; physical service-outage and long-disconnection behavior remain fixture-tested. Safe collector interruption and live desktop restart passed",
-    "Live desktop validation used an isolated installed 1.1.0 runtime with reviewed 1.1.1 source; the final 1.1.1 installer is verified separately in hosted CI"
+    "Live hardware evidence covers the earlier reviewed 1.1.1 source on an isolated installed 1.1.0 runtime. The 1.2.0 UI is verified with recorded fixtures; its final installer is verified separately in hosted CI, with no new live-hardware pass claimed"
   ],
   "owner_acceptance_basis": "Owner reported \"this works\" and authorized publication after desktop verification; the desktop verification passed on 2026-09-28",
   "desktop_validation": {
