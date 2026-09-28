@@ -8,8 +8,8 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 if sys.platform != "win32":
     raise SystemExit("Build the Windows collector on Windows")
-if sys.version_info[:2] != (3, 12):
-    raise SystemExit("The pinned collector build uses Python 3.12")
+if sys.version_info[:2] != (3, 13):
+    raise SystemExit("The pinned collector build uses Python 3.13")
 
 subprocess.run([
     sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir",

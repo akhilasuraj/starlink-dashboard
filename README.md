@@ -18,10 +18,10 @@ With bypass mode or a third-party router, a route to dish address `192.168.100.1
 
 ## Development
 
-Build requirements: Windows x64, Python 3.12, Node.js 24, and npm. These tools are needed on the build machine only.
+Build requirements: Windows x64, Python 3.13 (CI pins 3.13.15), Node.js 24, and npm. These tools are needed on the build machine only.
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt -r requirements-test.txt
 npm ci
 npm run install:runtime

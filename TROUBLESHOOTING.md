@@ -22,6 +22,6 @@ Closing the window hides it in the tray. **Quit** exits and stops the collector.
 
 ## Build failures
 
-Use Windows x64, Python 3.12, and Node.js 24. Create the project virtual environment and install the pinned build requirements, then run `npm ci` and `npm run install:runtime`. Build-time downloads need network; installing the resulting artifact does not. Run `npm run build:win` to build the collector before packaging. A missing collector bundle is a build error.
+Use Windows x64, Python 3.13 (CI pins 3.13.15), and Node.js 24. Create the project virtual environment and install the pinned build requirements, then run `npm ci` and `npm run install:runtime`. Build-time downloads need network; installing the resulting artifact does not. Run `npm run build:win` to build the collector before packaging. A missing collector bundle is a build error.
 
 Report failures with the app version, collection state, relevant log text, and whether the PC uses a Starlink router or bypass mode. Do not share desktop session secrets.
