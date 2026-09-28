@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "status": "partial",
-  "owner_acceptance": "pending",
+  "owner_acceptance": "accepted",
   "observed_at": "2026-09-28T05:45:46Z",
   "owner_reported": {
     "dish_model": "Standard 4",
@@ -54,9 +54,33 @@
     "sha256": "0aa7057b50074827bf62d244ccee4f07e0b4f7a1d5997d815d70278397f21536"
   },
   "limitations": [
-    "Owner acceptance of this hardware record remains pending",
     "Service plan was not supplied",
-    "No dish/service interruption was induced; reported-outage and long-disconnection behavior remain fixture-tested",
-    "Collector-instance recreation was observed; this is not a live desktop-process restart test"
-  ]
+    "No dish/service outage was induced; physical service-outage and long-disconnection behavior remain fixture-tested. Safe collector interruption and live desktop restart passed",
+    "Live desktop validation used an isolated installed 1.1.0 runtime with reviewed 1.1.1 source; the final 1.1.1 installer is verified separately in hosted CI"
+  ],
+  "owner_acceptance_basis": "Owner reported \"this works\" and authorized publication after desktop verification; the desktop verification passed on 2026-09-28",
+  "desktop_validation": {
+    "path": "validation/desktop-2026-09-28.json",
+    "sha256": "a308441b40166defa45463a103d2951d6f03228dc1570f6203f9edd4ddb0c783",
+    "completed_at": "2026-09-28T12:52:21.644Z",
+    "passed": true,
+    "version": "1.1.1",
+    "scope": "Installed 1.1.0 Electron + frozen collector; reviewed 1.1.1 package/frontend. This is an assembled candidate, not a rebuilt installer live pass.",
+    "collector_interruption": {
+      "scope": "owned test collector process only",
+      "recovered_fresh": true,
+      "retained_anchors": 5,
+      "duplicate_timestamps": false,
+      "one_collector_after_recovery": true
+    },
+    "desktop_restart": {
+      "same_isolated_profile_and_store": true,
+      "fresh_collection": true,
+      "retained_anchors": 5,
+      "duplicate_timestamps": false,
+      "one_collector": true,
+      "quit_cleanup": true
+    },
+    "startup_entries_unchanged": true
+  }
 }

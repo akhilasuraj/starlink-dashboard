@@ -1,1 +1,2 @@
 backend/tests/fixtures/live-*.json text eol=lf
+docs/validation/*.json text eol=lf

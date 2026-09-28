@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "mode": "isolated copied installed desktop with reviewed source",
+  "scope": "Full live desktop validation",
+  "assembly": "Installed 1.1.0 Electron + frozen collector; reviewed 1.1.1 package/frontend. This is an assembled candidate, not a rebuilt installer live pass.",
+  "device_writes": false,
+  "network_interruption": false,
+  "startup_changed": false,
+  "service_outage_induced": false,
+  "screenshots": [
+    "live-network.png",
+    "live-statistics.png",
+    "live-obstruction.png"
+  ],
+  "ranges": [
+    {
+      "range": "15m",
+      "window_seconds": 900,
+      "coverage_start": "2026-09-28T12:37:08Z",
+      "coverage_end": "2026-09-28T12:52:07Z",
+      "window_label": "15-minute window \u00c2\u00b7 Observed 9/28/2026, 6:07:08 PM\u00e2\u20ac\u201c9/28/2026, 6:22:07 PM",
+      "ping_success_api": 99.85046134037869,
+      "ping_success_rendered": "99.9",
+      "ping_samples": 898,
+      "ping_comparison_tolerance_percentage_points": 0.2,
+      "chart_units": [
+        "Mbps",
+        "ms",
+        "%"
+      ],
+      "chart_points": [
+        898,
+        898,
+        898
+      ],
+      "gaps_visible": false,
+      "headings": [
+        "Observed ping success",
+        "Observed latency",
+        "Observed ping drop rate"
+      ]
+    },
+    {
+      "range": "24h",
+      "window_seconds": 86400,
+      "coverage_start": "2026-09-28T12:24:19Z",
+      "coverage_end": "2026-09-28T12:52:07Z",
+      "window_label": "24-hour window \u00c2\u00b7 Observed 9/28/2026, 5:54:19 PM\u00e2\u20ac\u201c9/28/2026, 6:22:07 PM",
+      "ping_success_api": 99.87759590752302,
+      "ping_success_rendered": "99.9",
+      "ping_samples": 1667,
+      "ping_comparison_tolerance_percentage_points": 0.2,
+      "chart_units": [
+        "Mbps",
+        "ms",
+        "%"
+      ],
+      "chart_points": [
+        288,
+        288,
+        288
+      ],
+      "gaps_visible": true,
+      "headings": [
+        "Observed ping success",
+        "Observed latency",
+        "Observed ping drop rate"
+      ]
+    },
+    {
+      "range": "7d",
+      "window_seconds": 604800,
+      "coverage_start": "2026-09-28T12:24:19Z",
+      "coverage_end": "2026-09-28T12:52:07Z",
+      "window_label": "7-day window \u00c2\u00b7 Observed 9/28/2026, 5:54:19 PM\u00e2\u20ac\u201c9/28/2026, 6:22:07 PM",
+      "ping_success_api": 99.87759590752302,
+      "ping_success_rendered": "99.9",
+      "ping_samples": 1667,
+      "ping_comparison_tolerance_percentage_points": 0.2,
+      "chart_units": [
+        "Mbps",
+        "ms",
+        "%"
+      ],
+      "chart_points": [
+        336,
+        336,
+        336
+      ],
+      "gaps_visible": true,
+      "headings": [
+        "Observed ping success",
+        "Observed latency",
+        "Observed ping drop rate"
+      ]
+    },
+    {
+      "range": "15m",
+      "window_seconds": 900,
+      "coverage_start": "2026-09-28T12:37:08Z",
+      "coverage_end": "2026-09-28T12:52:07Z",
+      "window_label": "15-minute window \u00c2\u00b7 Observed 9/28/2026, 6:07:08 PM\u00e2\u20ac\u201c9/28/2026, 6:22:07 PM",
+      "ping_success_api": 99.85046134037869,
+      "ping_success_rendered": "99.9",
+      "ping_samples": 898,
+      "ping_comparison_tolerance_percentage_points": 0.2,
+      "chart_units": [
+        "Mbps",
+        "ms",
+        "%"
+      ],
+      "chart_points": [
+        898,
+        898,
+        898
+      ],
+      "gaps_visible": false,
+      "headings": [
+        "Observed ping success",
+        "Observed latency",
+        "Observed ping drop rate"
+      ]
+    }
+  ],
+  "production_provenance": {
+    "archive_sha256": "51383167406af243b5e114b80adf5b72c2bc27b5203fa74cd71a82719eba5b15",
+    "collector_sha256": "f3470f5f7f01e8fc6d102f9a7706b84bcfd38ab114da174b8b8ca8c721aa5bbc",
+    "matched_source_files": {
+      "main.js": "55bab090abbd3bb9ad6229da8520cbfdc393b537dc48611980a0673760e7f27e",
+      "preload.js": "583807d2f047f2949e6650480003b15822fb04e0da1999c1c5ad84524bcb1529",
+      "renderer/app.js": "0b0d04a9cc2dacea363397c911aa1556448bbc57ebe784ea47fb0691c88352e3",
+      "renderer/index.html": "a5b5d89a9f08cf87c32977fd231040e1da7cebfa1fc19a2760e54859dfc9639e"
+    }
+  },
+  "desktop_version": "1.1.1",
+  "initial_collection": "reachable",
+  "initial_service": "online",
+  "initial_observed_at": "2026-09-28T12:52:03Z",
+  "one_collector": true,
+  "python_environment_removed": true,
+  "network_layout": [
+    {
+      "chart_width": 514,
+      "chart_height": 179.8,
+      "canvas_width": 514,
+      "canvas_height": 179.796875,
+      "viewport_width": 584,
+      "viewport_height": 685,
+      "phase": "600x750_after350ms_and_capture",
+      "width_difference": 0,
+      "height_difference": 0.0031250000000113687,
+      "tolerance_px": 2
+    },
+    {
+      "chart_width": 914,
+      "chart_height": 509.6,
+      "canvas_width": 914,
+      "canvas_height": 509.59375,
+      "viewport_width": 984,
+      "viewport_height": 985,
+      "phase": "1000x1050_after350ms_and_capture",
+      "width_difference": 0,
+      "height_difference": 0.006250000000022737,
+      "tolerance_px": 2
+    },
+    {
+      "chart_width": 914,
+      "chart_height": 509.6,
+      "canvas_width": 914,
+      "canvas_height": 509.59375,
+      "viewport_width": 984,
+      "viewport_height": 985,
+      "phase": "1000x1050_after_longer_wait",
+      "width_difference": 0,
+      "height_difference": 0.006250000000022737,
+      "tolerance_px": 2
+    },
+    {
+      "chart_width": 914,
+      "chart_height": 509.6,
+      "canvas_width": 914,
+      "canvas_height": 509.59375,
+      "viewport_width": 984,
+      "viewport_height": 985,
+      "phase": "1000x1050_after_explicit_chart_resize",
+      "width_difference": 0,
+      "height_difference": 0.006250000000022737,
+      "tolerance_px": 2
+    }
+  ],
+  "renderer_fixture_probe": {
+    "measured_zero_distinct_from_unavailable": true,
+    "live_display_restored": true
+  },
+  "collector_interruption": {
+    "scope": "owned test collector process only",
+    "recovered_fresh": true,
+    "retained_anchors": 5,
+    "duplicate_timestamps": false,
+    "one_collector_after_recovery": true
+  },
+  "desktop_restart": {
+    "same_isolated_profile_and_store": true,
+    "fresh_collection": true,
+    "retained_anchors": 5,
+    "duplicate_timestamps": false,
+    "one_collector": true,
+    "quit_cleanup": true
+  },
+  "observed_history_span": {
+    "start": "2026-09-28T12:37:18Z",
+    "end": "2026-09-28T12:52:17Z"
+  },
+  "limitations": [
+    "No dish reboot, setting change or service/network outage was induced",
+    "Safe collector interruption validates desktop recovery, not physical service-outage behavior",
+    "Live validation used an isolated installed 1.1.0 runtime with reviewed 1.1.1 source; the final 1.1.1 installer is verified separately in hosted CI"
+  ],
+  "startup_entries_unchanged": true,
+  "completed_at": "2026-09-28T12:52:21.644Z"
+}
