@@ -159,7 +159,9 @@ function showWindow() {
 function createWindow(show) {
   const window = new BrowserWindow({
     show,
-    width: 600, height: 750, title: "Starlink Dashboard", backgroundColor: "#1a1a1a",
+    width: 1120, height: 800, minWidth: 560, minHeight: 640,
+    title: "Starlink Dashboard", backgroundColor: "#000000",
+    icon: path.join(__dirname, "assets", "app-icon.png"),
     webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, "preload.js") },
   });
   mainWindow = window;
