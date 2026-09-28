@@ -8,6 +8,8 @@ Use Windows 10/11 x64 and connect the PC to the Starlink LAN. The Windows instal
 
 Download the Windows x64 installer from [GitHub Releases](https://github.com/akhilasuraj/starlink-dashboard/releases), or use `dist/` after building, then launch Starlink Dashboard. Closing the window keeps monitoring in the tray; **Quit** stops both the desktop and collector. Start on sign-in is opt-in under **Devices** and can be turned off there.
 
+Starting with an updater-enabled release (1.3.0), **Devices → App updates** checks GitHub automatically on launch and every six hours. Choose **Download update**, then **Restart and install** when ready; the app stops collection before opening the installer and restarts afterward. GitHub prereleases are included. Ordinary Quit never installs. Version 1.2.0 and earlier require one manual upgrade to receive this feature. See [update behavior and verification](docs/auto-update.md).
+
 The tray distinguishes online, reported impairment, reported offline service, dish unreachable, stale readings, and collector failure. Dish reachability does not prove service availability. Idle traffic is a measured zero, not a speed test.
 
 Switch between 15-minute, 24-hour, and 7-day observed history. Missing collection time remains a gap. Longer views show observed coverage, and device fields that are absent or old say unavailable or stale. History remains in `%LOCALAPPDATA%\Starlink Dashboard\history.sqlite3` across app restarts. Router details are optional. Obstruction directional samples show reported signal context; there is no desktop camera scan.
@@ -38,6 +40,7 @@ npm test
 npm run build:win
 npm run test:collector-package
 npm run test:app-package
+npm run test:update-metadata
 ```
 
 `build:win` creates a PyInstaller one-folder collector, packages it as an Electron resource, and produces the NSIS installer under `dist/`. Publishing is disabled in these commands. Runtime dependencies are pinned in `requirements-runtime-lock.txt`, build/test tools separately, and Node dependencies in `package-lock.json`.
@@ -45,3 +48,5 @@ npm run test:app-package
 The app packaging smoke uses a temporary data directory, strips Python environment entries, enables a local inspector only for the check, verifies the actual window/preload/chart library, duplicate-launch handling, and collector cleanup. It reads startup settings but never changes them.
 
 The single [desktop workflow](.github/workflows/desktop-release.yml) runs behavioral tests, builds, packaging smokes, and offline installation on a disposable hosted Windows runner. Local builds never publish. Publication requires a separate manual request, the exact offline-tested installer bytes, and accepted live hardware evidence or explicit acknowledgment of its limitations. See [release verification](docs/release-verification.md).
+
+The owner requested **1.3.0 as the latest stable release**. Its version-bound approval retains the documented historical hardware limits; stable classification does not imply a new live dish validation. Future releases require their own approval to use this exception.

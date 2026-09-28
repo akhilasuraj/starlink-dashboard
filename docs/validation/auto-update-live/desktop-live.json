@@ -1,0 +1,320 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "mode": "isolated copied installed desktop with reviewed source",
+  "scope": "Full live desktop validation",
+  "assembly": "Exact extracted CI-tested 1.3.0 bundle (run 36465908312); original executable/collector and application code, test-only isolated profile bootstrap. No local installation or interactive wizard test.",
+  "device_writes": false,
+  "network_interruption": false,
+  "startup_changed": false,
+  "service_outage_induced": false,
+  "screenshots": [
+    "layout-network-600x750.png",
+    "layout-network-1000x1050.png",
+    "layout-network-explicit-resize.png",
+    "live-network.png",
+    "live-statistics.png",
+    "live-obstruction.png"
+  ],
+  "ranges": [
+    {
+      "range": "15m",
+      "window_seconds": 900,
+      "coverage_start": "2026-09-28T18:35:56Z",
+      "coverage_end": "2026-09-28T18:50:55Z",
+      "window_label": "15-minute window \u00b7 Observed 9/29/2026, 12:05:56 AM\u20139/29/2026, 12:20:55 AM",
+      "ping_success_api": 99.94452407411242,
+      "ping_success_rendered": "99.9",
+      "ping_samples": 897,
+      "ping_comparison_tolerance_percentage_points": 0.2,
+      "chart_units": [
+        "Mbps",
+        "ms",
+        "%"
+      ],
+      "chart_points": [
+        898,
+        898,
+        898
+      ],
+      "gaps_visible": true,
+      "headings": [
+        "Observed ping success"
+      ]
+    },
+    {
+      "range": "24h",
+      "window_seconds": 86400,
+      "coverage_start": "2026-09-28T18:34:09Z",
+      "coverage_end": "2026-09-28T18:50:55Z",
+      "window_label": "24-hour window \u00b7 Observed 9/29/2026, 12:04:09 AM\u20139/29/2026, 12:20:55 AM",
+      "ping_success_api": 99.94047618957154,
+      "ping_success_rendered": "99.9",
+      "ping_samples": 1004,
+      "ping_comparison_tolerance_percentage_points": 0.2,
+      "chart_units": [
+        "Mbps",
+        "ms",
+        "%"
+      ],
+      "chart_points": [
+        288,
+        288,
+        288
+      ],
+      "gaps_visible": true,
+      "headings": [
+        "Observed ping success"
+      ]
+    },
+    {
+      "range": "7d",
+      "window_seconds": 604800,
+      "coverage_start": "2026-09-28T18:34:09Z",
+      "coverage_end": "2026-09-28T18:50:55Z",
+      "window_label": "7-day window \u00b7 Observed 9/29/2026, 12:04:09 AM\u20139/29/2026, 12:20:55 AM",
+      "ping_success_api": 99.94047618957154,
+      "ping_success_rendered": "99.9",
+      "ping_samples": 1004,
+      "ping_comparison_tolerance_percentage_points": 0.2,
+      "chart_units": [
+        "Mbps",
+        "ms",
+        "%"
+      ],
+      "chart_points": [
+        336,
+        336,
+        336
+      ],
+      "gaps_visible": true,
+      "headings": [
+        "Observed ping success"
+      ]
+    },
+    {
+      "range": "15m",
+      "window_seconds": 900,
+      "coverage_start": "2026-09-28T18:35:57Z",
+      "coverage_end": "2026-09-28T18:50:55Z",
+      "window_label": "15-minute window \u00b7 Observed 9/29/2026, 12:05:57 AM\u20139/29/2026, 12:20:55 AM",
+      "ping_success_api": 99.94446215901657,
+      "ping_success_rendered": "99.9",
+      "ping_samples": 896,
+      "ping_comparison_tolerance_percentage_points": 0.2,
+      "chart_units": [
+        "Mbps",
+        "ms",
+        "%"
+      ],
+      "chart_points": [
+        897,
+        897,
+        897
+      ],
+      "gaps_visible": true,
+      "headings": [
+        "Observed ping success"
+      ]
+    }
+  ],
+  "production_provenance": {
+    "archive_sha256": "8c2b6220c9e5d7d2106f2cf984a399dff1094382a621525dff8f20e852f0486b",
+    "collector_sha256": "3c60b65273a5527bafe5b8cf9df304e7a36ad6957075e8fb0a5ad8f21de46340",
+    "matched_source_files": {
+      "main.js": "b890c47dd2cdb618e8980d9e8778fc1dc94236451ec3dacb652436876ad9f302",
+      "updater.js": "485650b55cce2339870b058f67994f109497cfc79fcdcad66ede97b61e611b67",
+      "preload.js": "24f31f49266e44aba94bde8a51a45840096757476f89e17f87a4be820b7dc89b",
+      "renderer/app.js": "ea70f03b60243a87d49d215e59f801961329ec4bffe913429ab2ab5c9463c5c4",
+      "renderer/updates.js": "7e2fcfefe2feb9f190bd5394a51ba868956fe39a077f4fee29abbb922f953084",
+      "renderer/index.html": "76b9b502d4a8eb402347949aa920c11e64f6e0276d3aefcdc5fecd338dbd285e"
+    }
+  },
+  "launch_readiness": [
+    {
+      "launch_number": 1,
+      "readiness_attempts": 2,
+      "first_preimport_process_flags": {
+        "process_type": "browser",
+        "electron_version_present": true
+      },
+      "last_preimport_process_flags": {
+        "process_type": "browser",
+        "electron_version_present": true
+      },
+      "first_unready_flags": {
+        "process_type": "browser",
+        "electron_export_type": "object",
+        "app_present": true,
+        "is_ready": false,
+        "single_instance_lock_method": "function",
+        "has_single_instance_lock": true,
+        "user_data_matches_expected": true,
+        "browser_window_count": 0,
+        "version": "1.3.0"
+      },
+      "last_flags": {
+        "process_type": "browser",
+        "electron_export_type": "object",
+        "app_present": true,
+        "is_ready": true,
+        "single_instance_lock_method": "function",
+        "has_single_instance_lock": true,
+        "user_data_matches_expected": true,
+        "browser_window_count": 1,
+        "version": "1.3.0"
+      },
+      "cleanup_process_flags": {
+        "process_type": "browser",
+        "electron_version_present": true
+      },
+      "cleanup_last_flags": {
+        "process_type": "browser",
+        "electron_export_type": "object",
+        "app_present": true,
+        "is_ready": true,
+        "single_instance_lock_method": "function",
+        "has_single_instance_lock": true,
+        "user_data_matches_expected": true,
+        "browser_window_count": 1,
+        "version": "1.3.0"
+      }
+    },
+    {
+      "launch_number": 2,
+      "readiness_attempts": 2,
+      "first_preimport_process_flags": {
+        "process_type": "browser",
+        "electron_version_present": true
+      },
+      "last_preimport_process_flags": {
+        "process_type": "browser",
+        "electron_version_present": true
+      },
+      "first_unready_flags": {
+        "process_type": "browser",
+        "electron_export_type": "object",
+        "app_present": true,
+        "is_ready": false,
+        "single_instance_lock_method": "function",
+        "has_single_instance_lock": true,
+        "user_data_matches_expected": true,
+        "browser_window_count": 0,
+        "version": "1.3.0"
+      },
+      "last_flags": {
+        "process_type": "browser",
+        "electron_export_type": "object",
+        "app_present": true,
+        "is_ready": true,
+        "single_instance_lock_method": "function",
+        "has_single_instance_lock": true,
+        "user_data_matches_expected": true,
+        "browser_window_count": 1,
+        "version": "1.3.0"
+      },
+      "cleanup_process_flags": {
+        "process_type": "browser",
+        "electron_version_present": true
+      },
+      "cleanup_last_flags": {
+        "process_type": "browser",
+        "electron_export_type": "object",
+        "app_present": true,
+        "is_ready": true,
+        "single_instance_lock_method": "function",
+        "has_single_instance_lock": true,
+        "user_data_matches_expected": true,
+        "browser_window_count": 1,
+        "version": "1.3.0"
+      }
+    }
+  ],
+  "desktop_version": "1.3.0",
+  "initial_collection": "reachable",
+  "initial_service": "online",
+  "initial_observed_at": "2026-09-28T18:50:50Z",
+  "one_collector": true,
+  "python_environment_removed": true,
+  "network_layout": [
+    {
+      "chart_width": 497,
+      "chart_height": 125,
+      "canvas_width": 497,
+      "canvas_height": 125,
+      "viewport_width": 584,
+      "viewport_height": 685,
+      "phase": "600x750_after350ms_and_capture",
+      "width_difference": 0,
+      "height_difference": 0,
+      "tolerance_px": 2
+    },
+    {
+      "chart_width": 660,
+      "chart_height": 323.4,
+      "canvas_width": 660,
+      "canvas_height": 323.390625,
+      "viewport_width": 984,
+      "viewport_height": 985,
+      "phase": "1000x1050_after350ms_and_capture",
+      "width_difference": 0,
+      "height_difference": 0.009374999999977263,
+      "tolerance_px": 2
+    },
+    {
+      "chart_width": 660,
+      "chart_height": 323.4,
+      "canvas_width": 660,
+      "canvas_height": 323.390625,
+      "viewport_width": 984,
+      "viewport_height": 985,
+      "phase": "1000x1050_after_longer_wait",
+      "width_difference": 0,
+      "height_difference": 0.009374999999977263,
+      "tolerance_px": 2
+    },
+    {
+      "chart_width": 660,
+      "chart_height": 323.4,
+      "canvas_width": 660,
+      "canvas_height": 323.390625,
+      "viewport_width": 984,
+      "viewport_height": 985,
+      "phase": "1000x1050_after_explicit_chart_resize",
+      "width_difference": 0,
+      "height_difference": 0.009374999999977263,
+      "tolerance_px": 2
+    }
+  ],
+  "renderer_fixture_probe": {
+    "measured_zero_distinct_from_unavailable": true,
+    "live_display_restored": true
+  },
+  "collector_interruption": {
+    "scope": "owned test collector process only",
+    "recovered_fresh": true,
+    "retained_anchors": 5,
+    "duplicate_timestamps": false,
+    "one_collector_after_recovery": true
+  },
+  "desktop_restart": {
+    "same_isolated_profile_and_store": true,
+    "fresh_collection": true,
+    "retained_anchors": 5,
+    "duplicate_timestamps": false,
+    "one_collector": true,
+    "quit_cleanup": true
+  },
+  "observed_history_span": {
+    "start": "2026-09-28T18:36:16Z",
+    "end": "2026-09-28T18:51:14Z"
+  },
+  "limitations": [
+    "Service plan unknown; no physical dish/service outage induced.",
+    "Extracted 1.3.0 bundle checked live in an isolated profile; installed upgrade and offline install are verified separately on hosted CI. Interactive installer wizard not exercised."
+  ],
+  "startup_entries_unchanged": true,
+  "completed_at": "2026-09-28T18:51:21.894Z",
+  "source_comparison": "UTF-8 text compared with CRLF normalized to LF; original archive and collector byte hashes retained.",
+  "installer_sha256": "474105142075f38292b4fbcabb75624ce123b375aae29f24f6ba10afb8ecdadd"
+}

@@ -109,9 +109,25 @@ app.on('web-contents-created',(_event,contents)=>{
   contents.on('did-finish-load',()=>contents.executeJavaScript('Date.now=()=>${fixtureEpoch}').catch(()=>{}));
   contents.on('render-process-gone',(_event,detail)=>global.__uiPreview.errors.push('Renderer gone: '+detail.reason));
 });
+// Inject only the updater seam; app.isPackaged and production IPC stay unchanged.
+const Module=require('node:module');const load=Module._load;
+const factory=require(${JSON.stringify(path.join(ROOT, 'updater.js'))});
+const fakeUpdater=new EventEmitter();let finishDownload;
+fakeUpdater.setFeedURL=()=>{};
+fakeUpdater.checkForUpdates=async()=>{if(global.__uiPreview.updateError){fakeUpdater.emit('error',Error('fixture failure'));throw Error('fixture failure');}
+  fakeUpdater.emit(global.__uiPreview.noUpdate?'update-not-available':'update-available',{version:'1.4.0'});};
+fakeUpdater.downloadUpdate=()=>new Promise(resolve=>{finishDownload=resolve;fakeUpdater.emit('download-progress',{percent:43});});
+fakeUpdater.quitAndInstall=()=>{global.__uiPreview.installerCalls++;if(global.__uiPreview.collectorStops!==1)throw Error('Collector still alive');
+  setImmediate(()=>app.quit());};
+global.__uiPreview.installerCalls=0;
+global.__uiPreview.finishDownload=()=>{fakeUpdater.emit('update-downloaded');finishDownload();};
+Module._load=function(name,parent,...rest){if(name==='./updater'&&parent?.filename===${JSON.stringify(path.join(ROOT, 'main.js'))})
+  return {createUpdateController:options=>{const controller=factory.createUpdateController({...options,updater:fakeUpdater,version:'1.3.0'});global.__uiPreview.resetUpdates=()=>fakeUpdater.emit('error',Error('fixture reset'));return controller;}};
+  return load.call(this,name,parent,...rest);};
 require(${JSON.stringify(path.join(ROOT, 'main.js'))});
+Module._load=load;
 `);
-  report.source_hashes = Object.fromEntries(['main.js', 'preload.js', 'renderer/index.html', 'renderer/app.js', 'renderer/styles.css']
+  report.source_hashes = Object.fromEntries(['main.js', 'preload.js', 'renderer/index.html', 'renderer/app.js', 'renderer/styles.css', 'renderer/updates.js', 'updater.js']
     .map(file => [file, hash(path.join(ROOT, file))]));
   return wrapper;
 }
@@ -253,6 +269,37 @@ async function run() {
       await scenario(name); await select('network'); await inspect(`${name}-network-${width}x${height}`, 'network');
     }
     await scenario('unsupported'); await select('obstruction'); await inspect(`unsupported-obstruction-${width}x${height}`, 'obstruction');
+  }
+  await scenario('online');
+  for (const [width,height] of [[1120,800],[600,750]]) {
+    await evaluate(`${ELECTRON}.BrowserWindow.getAllWindows()[0].setSize(${width},${height})`);await pause(250);
+    await select('device',false);
+    await renderer(`(async()=>{renderUpdateState(await desktopUpdates.check());})()`);
+    for (const phase of ['available','downloading','downloaded']) {
+      stage=`update ${phase} ${width}`;
+      if(phase==='downloading')await renderer(`document.getElementById('update-action').click()`);
+      if(phase==='downloaded'){await evaluate(`global.__uiPreview.finishDownload()`);await pause(150);}
+      await renderer(`(async()=>{renderUpdateState(await desktopUpdates.getState());})()`);
+      const update=await renderer(`(()=>{const action=document.getElementById('update-action'),progress=document.getElementById('update-progress');
+        return{phase:updateState.phase,action:action.textContent,actionVisible:!action.hidden,disabled:action.disabled,
+          progress:progress.value,progressVisible:!progress.hidden,bannerVisible:!document.getElementById('update-notice').hidden,
+          overflow:Math.max(document.body.scrollWidth,document.documentElement.scrollWidth)>innerWidth+2};})()`);
+      report.observations.push({name:stage,...update});check(update.phase===phase,'Wrong update state');
+      check(update.bannerVisible&&!update.overflow,'Update banner/layout missing or overflowing');
+      check(phase==='downloading'?update.progressVisible&&update.progress===43&&!update.actionVisible:
+        update.actionVisible&&!update.disabled&&update.action===(phase==='available'?'Download update':'Restart and install'),'Update action/progress incorrect');
+      await screenshot(`update-${phase}-${width}x${height}`);
+      if(phase==='available'){await select('network',false);await screenshot(`update-overview-${width}x${height}`);await select('device',false);}
+    }
+    // Reset the downloaded fixture through a controller error; no installer is executed.
+    await evaluate(`global.__uiPreview.resetUpdates()`);
+    await renderer(`(async()=>{renderUpdateState(await desktopUpdates.getState());})()`);
+    await screenshot(`update-error-${width}x${height}`);
+    await evaluate(`global.__uiPreview.noUpdate=true`);
+    await renderer(`(async()=>{renderUpdateState(await desktopUpdates.check());})()`);
+    check(await renderer(`updateState.phase==='current'&&document.getElementById('update-notice').hidden`),'Current state or banner visibility incorrect');
+    await screenshot(`update-current-${width}x${height}`);
+    await evaluate(`global.__uiPreview.noUpdate=false`);
   }
   const state = await evaluate(`({errors:global.__uiPreview.errors,spawns:global.__uiPreview.collectorSpawns})`);
   report.console_errors = state.errors;

@@ -1,18 +1,19 @@
 {
   "name": "starlink-dashboard",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Starlink Statistics Dashboard",
   "main": "main.js",
   "scripts": {
     "start": "npm run install:runtime && electron .",
-    "test": "node --test tests/desktop-smoke.test.js tests/main-process-smoke.test.js tests/release-gate.test.js",
+    "test": "node --test tests/desktop-smoke.test.js tests/main-process-smoke.test.js tests/release-gate.test.js tests/updater.test.js tests/update-download.test.js tests/update-metadata.test.js tests/update-ui.test.js",
     "build:collector": ".venv\\Scripts\\python.exe build/build-collector.py",
     "build": "npm run build:collector && electron-builder --publish never",
     "build:win": "npm run build:collector && electron-builder --win --publish never",
     "dist": "npm run build:win",
     "install:runtime": "node node_modules/electron/install.js",
     "test:collector-package": "node --test tests/packaged-collector.test.js",
-    "test:app-package": "node tests/packaged-app-smoke.js"
+    "test:app-package": "node tests/packaged-app-smoke.js",
+    "test:update-metadata": "node build/verify-update-metadata.js"
   },
   "keywords": [
     "starlink",
@@ -24,7 +25,12 @@
   "build": {
     "appId": "com.starlink.dashboard",
     "productName": "Starlink Dashboard",
-    "publish": null,
+    "publish": {
+      "provider": "github",
+      "owner": "akhilasuraj",
+      "repo": "starlink-dashboard",
+      "releaseType": "draft"
+    },
     "win": {
       "target": [
         {
@@ -48,7 +54,8 @@
       "shortcutName": "Starlink Dashboard",
       "perMachine": false,
       "allowElevation": true,
-      "include": "build/installer.nsh"
+      "include": "build/installer.nsh",
+      "artifactName": "Starlink.Dashboard.Setup.${version}.${ext}"
     },
     "extraResources": [
       {
@@ -61,6 +68,7 @@
     ],
     "files": [
       "main.js",
+      "updater.js",
       "preload.js",
       "renderer/**/*",
       "assets/**/*",
@@ -69,10 +77,12 @@
   },
   "devDependencies": {
     "electron": "44.4.5",
-    "electron-builder": "26.15.3"
+    "electron-builder": "26.15.3",
+    "js-yaml": "4.3.2"
   },
   "dependencies": {
-    "chart.js": "4.5.1"
+    "chart.js": "4.5.1",
+    "electron-updater": "6.8.9"
   },
   "packageManager": "npm@12.1.0",
   "engines": {

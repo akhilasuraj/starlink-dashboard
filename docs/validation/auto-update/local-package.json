@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-09-28T18:21:51.654Z",
+  "version": "1.3.0",
+  "feed": {
+    "owner": "akhilasuraj",
+    "repo": "starlink-dashboard",
+    "provider": "github",
+    "releaseType": "draft",
+    "updaterCacheDirName": "starlink-dashboard-updater"
+  },
+  "updaterIncluded": true,
+  "rendererIncluded": true,
+  "installerSha256": "27d5b7d246fdd8f98ef59397ea2dc4772036dc9f7a16f3f138ade21f5a89bf8c",
+  "scope": "Local packaging only using existing unchanged frozen collector. No installer executed. Full pinned rebuild and installed upgrade require hosted CI.",
+  "updateMetadataVerified": true,
+  "startupUpgradeGuardIncluded": true
+}

@@ -120,6 +120,11 @@ input[type='checkbox'] { width: 17px; height: 17px; accent-color: #e4e4e4; }
 .logs-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
 .clear-btn { border: 1px solid #484848; border-radius: 4px; padding: 8px 13px; background: var(--surface); font-size: 12px; }
 .clear-btn:hover { background: var(--raised); }
+.update-notice { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 15px; padding: 12px 32px; background: #151e1b; border-bottom: 1px solid #2f4a40; font-size: 12px; line-height: 1.6; }
+.update-notice p { overflow-wrap: anywhere; }
+.update-notice button { flex: none; }
+.update-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+.update-progress { display: block; width: 100%; height: 8px; margin-top: 15px; accent-color: var(--upload); }
 .logs-content { flex: 1; min-height: 160px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 15px; font-family: Consolas, monospace; font-size: 11px; line-height: 1.7; }
 .log-entry { display: flex; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .log-time { color: var(--muted); flex: none; }

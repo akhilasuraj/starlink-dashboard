@@ -14,7 +14,11 @@ on:
         type: string
         default: ''
       acknowledge_limitations:
-        description: I reviewed and accept every recorded hardware limitation (publishes a prerelease)
+        description: I reviewed and accept every recorded hardware limitation
+        type: boolean
+        default: false
+      stable_release:
+        description: Publish stable latest using the version-bound owner approval record
         type: boolean
         default: false
 
@@ -58,7 +62,10 @@ jobs:
       - name: Build the self-contained installer (never publishes)
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npm run build:win
+        run: |
+          npm run build:win
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:update-metadata
       - name: Bundled collector and packaged desktop smoke (sequential)
         run: |
           npm run test:collector-package
@@ -70,9 +77,21 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist/validation | Out-Null
           $version = (Get-Content package.json | ConvertFrom-Json).version
-          $installer = Join-Path (Get-Location) "dist/Starlink Dashboard Setup $version.exe"
+          $installer = Join-Path (Get-Location) "dist/Starlink.Dashboard.Setup.$version.exe"
           $node = (Get-Command node).Source
           ./build/offline-install-smoke.ps1 -InstallerPath $installer -NodePath $node -ReportPath dist/validation/offline-install.json
+      - name: Verify real installed update across two versions on this disposable runner
+        env:
+          STARLINK_DISPOSABLE_UPDATE_SMOKE: '1'
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          node build/build-update-bootstrap.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $installer = Join-Path (Get-Location) "dist/Starlink.Dashboard.Setup.$version.exe"
+          $bootstrap = Join-Path (Get-Location) 'dist/update-bootstrap/Starlink.Dashboard.Setup.1.2.99.exe'
+          $node = (Get-Command node).Source
+          ./build/installed-update-smoke.ps1 -BootstrapPath $bootstrap -InstallerPath $installer -NodePath $node -ReportPath dist/validation/installed-update.json
       - name: Upload tested artifact and verification evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -80,7 +99,9 @@ jobs:
           path: |
             dist/*.exe
             dist/*.blockmap
+            dist/latest.yml
             dist/validation/offline-install.json
+            dist/validation/installed-update.json
             docs/hardware-validation.json
           if-no-files-found: error
           retention-days: 14
@@ -120,30 +141,45 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
           ACKNOWLEDGE_LIMITATIONS: ${{ inputs.acknowledge_limitations }}
+          STABLE_RELEASE: ${{ inputs.stable_release }}
         run: |
           if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$') { throw 'Invalid version tag' }
           $version = (Get-Content package.json | ConvertFrom-Json).version
           if ($env:RELEASE_TAG -ne "v$version") { throw 'Tag/package version mismatch' }
           $tagCommit = git rev-parse --verify "refs/tags/$($env:RELEASE_TAG)^{commit}"
           if ($LASTEXITCODE -ne 0 -or $tagCommit -ne $env:GITHUB_SHA) { throw 'Tag must already point to the tested commit' }
-          $installer = "release-artifact/dist/Starlink Dashboard Setup $version.exe"
+          npm install --global npm@12.1.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm ci --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installer = "release-artifact/dist/Starlink.Dashboard.Setup.$version.exe"
           $arguments = @('build/release-gate.js', '--hardware', 'docs/hardware-validation.json',
             '--offline', 'release-artifact/dist/validation/offline-install.json', '--installer', $installer,
             '--expected-sha', $env:GITHUB_SHA, '--expected-run', $env:GITHUB_RUN_ID,
+            '--update-metadata', 'release-artifact/dist/latest.yml', '--blockmap', "$installer.blockmap",
+            '--update-smoke', 'release-artifact/dist/validation/installed-update.json',
             '--notes-output', 'release-artifact/release-notes.md')
           if ($env:ACKNOWLEDGE_LIMITATIONS -eq 'true') { $arguments += '--acknowledge-limitations' }
+          if ($env:STABLE_RELEASE -eq 'true') { $arguments += @('--stable-release', '--release-approval', 'docs/release-approval.json') }
           $decision = & node @arguments
           if ($LASTEXITCODE -ne 0) { throw 'Release evidence gate failed' }
           $decision | Set-Content release-artifact/gate-decision.json
-      - name: Publish only the tested installer
+      - name: Publish tested installer and update feed together
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           $version = (Get-Content package.json | ConvertFrom-Json).version
+          $installer = "release-artifact/dist/Starlink.Dashboard.Setup.$version.exe"
           $arguments = @('release', 'create', $env:RELEASE_TAG,
-            "release-artifact/dist/Starlink Dashboard Setup $version.exe", '--verify-tag',
+            $installer, "$installer.blockmap", 'release-artifact/dist/latest.yml', '--verify-tag', '--draft',
             '--title', "Starlink Dashboard $env:RELEASE_TAG", '--notes-file', 'release-artifact/release-notes.md')
-          if ((Get-Content release-artifact/gate-decision.json | ConvertFrom-Json).prerelease) { $arguments += '--prerelease' }
+          $decision = Get-Content release-artifact/gate-decision.json | ConvertFrom-Json
+          if ($decision.prerelease) { $arguments += '--prerelease' }
           & gh @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Expose the release only after all updater assets are uploaded.
+          $editArguments = @('release', 'edit', $env:RELEASE_TAG, '--draft=false')
+          if (-not $decision.prerelease) { $editArguments += '--latest' }
+          & gh @editArguments
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

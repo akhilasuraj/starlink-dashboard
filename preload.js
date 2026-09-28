@@ -11,3 +11,10 @@ contextBridge.exposeInMainWorld("desktopSettings", {
   getStartOnLogin: () => ipcRenderer.invoke("startup:get"),
   setStartOnLogin: (enabled) => ipcRenderer.invoke("startup:set", enabled),
 });
+
+contextBridge.exposeInMainWorld("desktopUpdates", {
+  getState: () => ipcRenderer.invoke("updates:get"),
+  check: () => ipcRenderer.invoke("updates:check"),
+  download: () => ipcRenderer.invoke("updates:download"),
+  install: () => ipcRenderer.invoke("updates:install"),
+});

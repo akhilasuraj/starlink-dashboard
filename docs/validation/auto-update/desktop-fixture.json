@@ -1,0 +1,2248 @@
+{
+  "schema_version": 1,
+  "mode": "FIXTURE ONLY \u2014 real development Electron/main/preload/renderer",
+  "device_calls": false,
+  "real_collector_spawned": false,
+  "startup_writes": false,
+  "passed": true,
+  "screenshots": [
+    "fixture-update-available-1120x800.png",
+    "fixture-update-overview-1120x800.png",
+    "fixture-update-downloading-1120x800.png",
+    "fixture-update-downloaded-1120x800.png",
+    "fixture-update-error-1120x800.png",
+    "fixture-update-current-1120x800.png",
+    "fixture-update-available-600x750.png",
+    "fixture-update-overview-600x750.png",
+    "fixture-update-downloading-600x750.png",
+    "fixture-update-downloaded-600x750.png",
+    "fixture-update-error-600x750.png",
+    "fixture-update-current-600x750.png"
+  ],
+  "observations": [
+    {
+      "name": "keyboard-network",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-network"
+    },
+    {
+      "name": "online-network-1120x800",
+      "view": "network",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": true,
+          "width": 773,
+          "height": 125,
+          "displayedWidth": 773,
+          "displayedHeight": 125
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "\n              \n                --:--:--\n                INFO\n                Waiting for logs...\n              \n            ",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-statistics",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-statistics"
+    },
+    {
+      "name": "online-statistics-1120x800",
+      "view": "statistics",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": true,
+          "width": 355.5,
+          "height": 155,
+          "displayedWidth": 355.5,
+          "displayedHeight": 155
+        },
+        {
+          "id": "lossChart",
+          "visible": true,
+          "width": 355.5,
+          "height": 155,
+          "displayedWidth": 355.5,
+          "displayedHeight": 155
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "\n              \n                --:--:--\n                INFO\n                Waiting for logs...\n              \n            ",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-obstruction",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-obstruction"
+    },
+    {
+      "name": "online-obstruction-1120x800",
+      "view": "obstruction",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "\n              \n                --:--:--\n                INFO\n                Waiting for logs...\n              \n            ",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-device",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-device"
+    },
+    {
+      "name": "online-device-1120x800",
+      "view": "device",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": true,
+          "overflow": false
+        }
+      ],
+      "logText": "\n              \n                --:--:--\n                INFO\n                Waiting for logs...\n              \n            ",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-logs",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-logs"
+    },
+    {
+      "name": "online-logs-1120x800",
+      "view": "logs",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "range-15m-1120x800",
+      "pressed": "true",
+      "active": true,
+      "label": "15-minute window \u00b7 Observed 9/28/2026, 11:43:21 PM\u20139/28/2026, 11:43:25 PM"
+    },
+    {
+      "name": "range-24h-1120x800",
+      "pressed": "true",
+      "active": true,
+      "label": "24-hour window \u00b7 Observed 9/28/2026, 11:43:25 AM\u20139/28/2026, 11:43:25 PM"
+    },
+    {
+      "name": "range-7d-1120x800",
+      "pressed": "true",
+      "active": true,
+      "label": "7-day window \u00b7 Observed 9/22/2026, 11:43:25 PM\u20139/28/2026, 11:43:25 PM"
+    },
+    {
+      "name": "long-device-1120x800",
+      "view": "device",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "FIXTURE-ut-official-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "FIXTURE-rev-official-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "FIXTURE-firmware-official-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "FIXTURE-Router-fixture-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "FIXTURE-router-firmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware",
+          "visible": true,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "unreachable-network-1120x800",
+      "view": "network",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "DISH UNREACHABLE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": true,
+          "width": 773,
+          "height": 125,
+          "displayedWidth": 773,
+          "displayedHeight": 125
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": true,
+      "unavailable": "Unavailable"
+    },
+    {
+      "name": "error-network-1120x800",
+      "view": "network",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "COLLECTOR ERROR",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": true,
+          "width": 773,
+          "height": 125,
+          "displayedWidth": 773,
+          "displayedHeight": 125
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": true,
+      "unavailable": "Unavailable"
+    },
+    {
+      "name": "missing-network-1120x800",
+      "view": "network",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": true,
+          "width": 773,
+          "height": 125,
+          "displayedWidth": 773,
+          "displayedHeight": 125
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "unsupported-obstruction-1120x800",
+      "view": "obstruction",
+      "viewport": {
+        "width": 1104,
+        "height": 735
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev4",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-network",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-network"
+    },
+    {
+      "name": "online-network-600x750",
+      "view": "network",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": true,
+          "width": 497,
+          "height": 125,
+          "displayedWidth": 497,
+          "displayedHeight": 125
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-statistics",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-statistics"
+    },
+    {
+      "name": "online-statistics-600x750",
+      "view": "statistics",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": true,
+          "width": 491,
+          "height": 155,
+          "displayedWidth": 491,
+          "displayedHeight": 155
+        },
+        {
+          "id": "lossChart",
+          "visible": true,
+          "width": 491,
+          "height": 155,
+          "displayedWidth": 491,
+          "displayedHeight": 155
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-obstruction",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-obstruction"
+    },
+    {
+      "name": "online-obstruction-600x750",
+      "view": "obstruction",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-device",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-device"
+    },
+    {
+      "name": "online-device-600x750",
+      "view": "device",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": true,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "keyboard-logs",
+      "active": true,
+      "viewVisible": true,
+      "focused": true,
+      "keys": [
+        {
+          "key": "Enter",
+          "code": "Enter",
+          "type": "keydown"
+        }
+      ],
+      "activeElement": "nav-logs"
+    },
+    {
+      "name": "online-logs-600x750",
+      "view": "logs",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Router-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "router-firmware",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "range-15m-600x750",
+      "pressed": "true",
+      "active": true,
+      "label": "15-minute window \u00b7 Observed 9/28/2026, 11:43:21 PM\u20139/28/2026, 11:43:25 PM"
+    },
+    {
+      "name": "range-24h-600x750",
+      "pressed": "true",
+      "active": true,
+      "label": "24-hour window \u00b7 Observed 9/28/2026, 11:43:25 AM\u20139/28/2026, 11:43:25 PM"
+    },
+    {
+      "name": "range-7d-600x750",
+      "pressed": "true",
+      "active": true,
+      "label": "7-day window \u00b7 Observed 9/22/2026, 11:43:25 PM\u20139/28/2026, 11:43:25 PM"
+    },
+    {
+      "name": "long-device-600x750",
+      "view": "device",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "FIXTURE-ut-official-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "FIXTURE-rev-official-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "FIXTURE-firmware-official-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier-LongUnbrokenDeviceIdentifier",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "FIXTURE-Router-fixture-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware",
+          "visible": true,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "FIXTURE-router-firmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware-LongUnbrokenRouterFirmware",
+          "visible": true,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "unreachable-network-600x750",
+      "view": "network",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "DISH UNREACHABLE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": true,
+          "width": 497,
+          "height": 125,
+          "displayedWidth": 497,
+          "displayedHeight": 125
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": true,
+      "unavailable": "Unavailable"
+    },
+    {
+      "name": "error-network-600x750",
+      "view": "network",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "COLLECTOR ERROR",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": true,
+          "width": 497,
+          "height": 125,
+          "displayedWidth": 497,
+          "displayedHeight": 125
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": true,
+      "unavailable": "Unavailable"
+    },
+    {
+      "name": "missing-network-600x750",
+      "view": "network",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": true,
+          "width": 497,
+          "height": 125,
+          "displayedWidth": 497,
+          "displayedHeight": 125
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev-official",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "unsupported-obstruction-600x750",
+      "view": "obstruction",
+      "viewport": {
+        "width": 584,
+        "height": 685
+      },
+      "pageOverflow": false,
+      "headline": "SERVICE ONLINE",
+      "nav": [
+        {
+          "tab": "network",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "statistics",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "obstruction",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "device",
+          "visible": true,
+          "withinViewport": true
+        },
+        {
+          "tab": "logs",
+          "visible": true,
+          "withinViewport": true
+        }
+      ],
+      "charts": [
+        {
+          "id": "speedChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "latencyChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        },
+        {
+          "id": "lossChart",
+          "visible": false,
+          "width": 0,
+          "height": 0,
+          "displayedWidth": 0,
+          "displayedHeight": 0
+        }
+      ],
+      "longValues": [
+        {
+          "id": "dish-id",
+          "text": "ut-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "hardware",
+          "text": "rev4",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "software",
+          "text": "firmware-fixture",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-id",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        },
+        {
+          "id": "router-software",
+          "text": "Unavailable",
+          "visible": false,
+          "overflow": false
+        }
+      ],
+      "logText": "2026-09-29T18:13:25ZinfoFIXTURE: Local collector started; no hardware requests made.2026-09-29T18:13:27ZwarningFIXTURE: Router diagnostic unavailable; dish remains reachable.2026-09-29T18:13:29ZerrorFIXTURE: LongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticTextLongUnbrokenDiagnosticText",
+      "guidanceVisible": false,
+      "unavailable": "0.0"
+    },
+    {
+      "name": "update available 1120",
+      "phase": "available",
+      "action": "Download update",
+      "actionVisible": true,
+      "disabled": false,
+      "progress": 0,
+      "progressVisible": false,
+      "bannerVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "update downloading 1120",
+      "phase": "downloading",
+      "action": "Download update",
+      "actionVisible": false,
+      "disabled": true,
+      "progress": 43,
+      "progressVisible": true,
+      "bannerVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "update downloaded 1120",
+      "phase": "downloaded",
+      "action": "Restart and install",
+      "actionVisible": true,
+      "disabled": false,
+      "progress": 100,
+      "progressVisible": false,
+      "bannerVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "update available 600",
+      "phase": "available",
+      "action": "Download update",
+      "actionVisible": true,
+      "disabled": false,
+      "progress": 0,
+      "progressVisible": false,
+      "bannerVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "update downloading 600",
+      "phase": "downloading",
+      "action": "Download update",
+      "actionVisible": false,
+      "disabled": true,
+      "progress": 43,
+      "progressVisible": true,
+      "bannerVisible": true,
+      "overflow": false
+    },
+    {
+      "name": "update downloaded 600",
+      "phase": "downloaded",
+      "action": "Restart and install",
+      "actionVisible": true,
+      "disabled": false,
+      "progress": 100,
+      "progressVisible": false,
+      "bannerVisible": true,
+      "overflow": false
+    }
+  ],
+  "failures": [],
+  "console_errors": [],
+  "fixture_provenance": {
+    "generated_by": "backend.tests.fixture_status_api (recorded responses through public API)",
+    "original_status_time": "2026-09-27T12:00:00.000Z",
+    "anchored_test_clock": "2026-09-28T18:13:25.000Z",
+    "clock_mode": "All UTC fields shifted together; main/renderer Date.now fixed to fixture clock",
+    "synthetic_additions": "Long device strings, diagnostic log text, explicit collector-error response"
+  },
+  "source_hashes": {
+    "main.js": "24684b68fa9ec6066e8334b12abd3a14075759db275683b119e32bdd950d352e",
+    "preload.js": "e0630bbc1fe3c248e022b1b2650f70072ae1be9c1a8fc4fdf8f0967cb0fd2d20",
+    "renderer/index.html": "056534851750f53963681943a3f90953106c213cde424dfd62bc6d6c872d1e36",
+    "renderer/app.js": "ea70f03b60243a87d49d215e59f801961329ec4bffe913429ab2ab5c9463c5c4",
+    "renderer/styles.css": "4f8dc265b7a41be1d7f4b372715a4d7b38a93319271bbb1eaf0e738d034ab25c",
+    "renderer/updates.js": "1a19d11aa124def709ca5c2dccb1aae3f44bfb5e67449cbd9289258260765333",
+    "updater.js": "cb6f1e2f8e5329aeb0debb855d8dadb3f1399e5e4c4b082c28f01ea9ff5012ed"
+  },
+  "owned_desktop_pid": 22628,
+  "owned_desktop_closed": true,
+  "finished_at": "2026-09-28T18:13:39.992Z",
+  "fixture_update_provenance": "Real controller, finite production IPC and renderer; fake updater discovery/download events and version 1.3.0; inert collector. No installer executed."
+}
