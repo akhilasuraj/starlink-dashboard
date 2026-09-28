@@ -79,6 +79,7 @@ def main(scenario, endpoint="status", range_name="15m"):
     clock = [datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)]
     readings = {
         "online-idle": [fixture("online-idle.json")],
+        "service-impaired": [{**fixture("online-idle.json"), "pop_ping_drop_rate": 0.1}],
         "service-offline": [fixture("service-offline.json")],
         "dish-unreachable": [DishUnreachable("connection timed out")],
         "stale": [fixture("online-idle.json")],

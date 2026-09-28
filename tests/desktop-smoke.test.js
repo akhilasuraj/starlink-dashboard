@@ -40,7 +40,7 @@ function apiHistory(scenario, range = "15m") {
   return JSON.parse(result.stdout);
 }
 
-function desktop(response, history = { samples: [] }, withCharts = false, domReady = false) {
+function desktop(response, history = { samples: [] }, withCharts = false, domReady = false, settingsBridge = null) {
   const elements = new Map();
   const charts = [];
   const requests = [];
@@ -58,7 +58,8 @@ function desktop(response, history = { samples: [] }, withCharts = false, domRea
       if (!htmlIds.has(id)) return null;
       if (!elements.has(id)) {
         const element = { textContent: "", style: {}, hidden: false, title: "", htmlWrites: 0,
-          getContext() { return {}; }, addEventListener() {} };
+          checked: false, disabled: false, listeners: {}, getContext() { return {}; },
+          addEventListener(name, callback) { this.listeners[name] = callback; } };
         let html = "";
         Object.defineProperty(element, "innerHTML", {
           get() { return html; },
@@ -82,6 +83,7 @@ function desktop(response, history = { samples: [] }, withCharts = false, domRea
   };
   const context = vm.createContext({
     document,
+    window: { desktopSettings: settingsBridge },
     console: { error() {} },
     fetch: async (url) => ({
       ok: true,
@@ -113,6 +115,14 @@ function desktop(response, history = { samples: [] }, withCharts = false, domRea
     html(id) { return document.getElementById(id).innerHTML; },
     htmlWrites(id) { return document.getElementById(id).htmlWrites; },
     hidden(id) { return document.getElementById(id).hidden; },
+    checked(id) { return document.getElementById(id).checked; },
+    disabled(id) { return document.getElementById(id).disabled; },
+    async initializeSettings() { await vm.runInContext("setupStartupSetting()", context); },
+    async changeStartup(enabled) {
+      const checkbox = document.getElementById("start-on-login");
+      checkbox.checked = enabled;
+      await checkbox.listeners.change();
+    },
     charts,
     requests,
     setStatus(nextStatus) { response = nextStatus; },
@@ -142,6 +152,38 @@ test("idle but connected displays service online and a real zero traffic reading
   assert.equal(app.text("status"), "SERVICE ONLINE");
   assert.equal(app.text("download"), "0.0");
   assert.match(app.text("download-meta"), /starlink-grpc-core\.status_data/);
+});
+
+test("reported impairment can recover to healthy idle service without reopening the window", async () => {
+  const app = desktop(apiStatus("service-impaired"));
+  await app.render();
+  assert.equal(app.text("status"), "SERVICE IMPAIRED");
+  assert.equal(app.text("drop-rate"), "10.0");
+  app.setStatus(apiStatus("dish-unreachable"));
+  await app.render();
+  assert.equal(app.text("status"), "DISH UNREACHABLE");
+  app.setStatus(apiStatus("online-idle"));
+  await app.render();
+  assert.equal(app.text("status"), "SERVICE ONLINE");
+  assert.equal(app.text("download"), "0.0");
+});
+
+test("start-on-sign-in control is opt-in and can be turned off through the desktop bridge", async () => {
+  const changes = [];
+  const app = desktop(apiStatus("online-idle"), { samples: [] }, false, false, {
+    getStartOnLogin: async () => ({ supported: true, enabled: false }),
+    setStartOnLogin: async (enabled) => { changes.push(enabled); return { supported: true, enabled }; },
+  });
+  await app.initializeSettings();
+  assert.equal(app.checked("start-on-login"), false);
+  assert.equal(app.disabled("start-on-login"), false);
+  assert.equal(changes.length, 0);
+  await app.changeStartup(true);
+  assert.equal(app.checked("start-on-login"), true);
+  assert.match(app.text("start-on-login-status"), /Starts in the tray/);
+  await app.changeStartup(false);
+  assert.equal(app.checked("start-on-login"), false);
+  assert.deepEqual(changes, [true, false]);
 });
 
 test("dish reported offline is separate from a reachable collector", async () => {

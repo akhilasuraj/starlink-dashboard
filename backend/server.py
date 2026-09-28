@@ -62,6 +62,7 @@ class Collector:
         self.history_store = history_store
         self.last_history_attempt = None
         self.history_due_on_reconnect = True
+        self.outage_continuity_lost = False
         self.last_status = None
         self.dish_diagnostics = None
         self.router_diagnostics = None
@@ -78,9 +79,12 @@ class Collector:
         self.logs = deque(maxlen=200)
 
     async def poll_once(self):
-        if self.history_store is None:
-            self.history_store = HistoryStore(default_history_path())
         try:
+            if self.history_store is None:
+                self.history_store = HistoryStore(default_history_path())
+            if self.outage_continuity_lost:
+                self.history_store.interrupt_outage()
+                self.outage_continuity_lost = False
             status = await asyncio.to_thread(self.telemetry.read_status)
             if not isinstance(status, dict):
                 raise TelemetryError("Unexpected status response")
@@ -107,12 +111,13 @@ class Collector:
                 try:
                     history_poll_started_at = self.now()
                     general, bulk = await asyncio.to_thread(self.telemetry.read_history)
-                    self.history_store.ingest_dish_history(
-                        general, bulk, history_poll_started_at, status.get("id"), status.get("uptime")
-                    )
                 except Exception as error:
                     self.logs.append(self._log("warning", "Dish history unavailable; using observed status polls"))
                     logger.warning("Dish history unavailable: %s", error)
+                else:
+                    self.history_store.ingest_dish_history(
+                        general, bulk, history_poll_started_at, status.get("id"), status.get("uptime")
+                    )
         except DishUnreachable as error:
             self.collection_state = "dish_unreachable"
             self.collection_error = str(error)
@@ -123,8 +128,8 @@ class Collector:
             self.collection_state = "collector_error"
             self.collection_error = str(error)
             self._record_gap()
-            self.logs.append(self._log("error", "Collector could not read dish status"))
-            logger.exception("Collector could not read dish status")
+            self.logs.append(self._log("error", "Collector could not collect or save dish telemetry"))
+            logger.exception("Collector could not collect or save dish telemetry")
 
     async def _refresh_diagnostics(self):
         if self.last_diagnostics_attempt is not None and (
@@ -179,8 +184,19 @@ class Collector:
 
     def _record_gap(self):
         self.history_due_on_reconnect = True
-        self.history_store.interrupt_outage()
-        self.history_store.record_gap(self.now())
+        self.outage_continuity_lost = True
+        if self.history_store is None:
+            return
+        try:
+            self.history_store.interrupt_outage()
+            self.history_store.record_gap(self.now())
+            self.outage_continuity_lost = False
+        except Exception as error:
+            # A failed error-recording write must not terminate the polling loop.
+            # Interrupt prior outage confirmation once storage becomes writable.
+            self.collection_state = "collector_error"
+            self.collection_error = f"Unable to save collection gap: {error}"
+            logger.warning("Collection gap could not be saved: %s", error)
 
     def snapshot(self):
         now = self.now()
@@ -191,8 +207,14 @@ class Collector:
         state = "stale" if self.collection_state == "reachable" and stale else self.collection_state
         raw = self.last_status or {}
         dish_state = raw.get("state") if isinstance(raw.get("state"), str) else None
+        reported_loss = number(raw.get("pop_ping_drop_rate"))
+        impairment_reasons = []
+        if reported_loss is not None and 0 < reported_loss <= 1:
+            impairment_reasons.append("Dish reports ping loss")
+        if raw.get("currently_obstructed") is True:
+            impairment_reasons.append("Dish reports current obstruction")
         last_known_service = (
-            "online" if dish_state == "CONNECTED" else
+            ("impaired" if impairment_reasons else "online") if dish_state == "CONNECTED" else
             "offline" if dish_state in OFFLINE_DISH_STATES else "unknown"
         )
         service_state = last_known_service if state == "reachable" else "unknown"
@@ -326,11 +348,13 @@ class Collector:
             "collector_error": "Collector error",
             "stale": "Data stale",
             "reachable": "Service online" if service_state == "online" else
+                         "Service impaired" if service_state == "impaired" else
                          "Service offline" if service_state == "offline" else "Service unknown",
         }[state]
         return {
             "collection_state": state,
             "service_state": service_state,
+            "impairment_reasons": impairment_reasons if service_state == "impaired" else [],
             "last_known_service_state": last_known_service,
             "dish_state": dish_state if state == "reachable" else None,
             "last_known_dish_state": dish_state,

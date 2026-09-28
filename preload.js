@@ -1,4 +1,6 @@
-// Empty preload for now - can add IPC if needed
-window.addEventListener('DOMContentLoaded', () => {
-    console.log('Starlink Dashboard loaded');
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("desktopSettings", {
+  getStartOnLogin: () => ipcRenderer.invoke("startup:get"),
+  setStartOnLogin: (enabled) => ipcRenderer.invoke("startup:set", enabled),
 });

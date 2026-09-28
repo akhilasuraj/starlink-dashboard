@@ -109,7 +109,7 @@ function renderStatus(status) {
   const service = statusProvenance && status.service_state || "unknown";
   const label = {
     collecting: "COLLECTING",
-    reachable: service === "online" ? "SERVICE ONLINE" : service === "offline" ? "SERVICE OFFLINE" : "SERVICE UNKNOWN",
+    reachable: service === "online" ? "SERVICE ONLINE" : service === "impaired" ? "SERVICE IMPAIRED" : service === "offline" ? "SERVICE OFFLINE" : "SERVICE UNKNOWN",
     dish_unreachable: "DISH UNREACHABLE",
     collector_error: "COLLECTOR ERROR",
     stale: "DATA STALE",
@@ -394,7 +394,47 @@ async function updateLogs() {
   }
 }
 
+async function setupStartupSetting() {
+  const checkbox = byId("start-on-login");
+  const message = byId("start-on-login-status");
+  const bridge = typeof window !== "undefined" && window.desktopSettings;
+  if (!bridge) {
+    checkbox.disabled = true;
+    message.textContent = "Available in the installed Windows app";
+    return;
+  }
+  let enabled = false;
+  const apply = (setting) => {
+    enabled = setting.enabled === true;
+    checkbox.checked = enabled;
+    checkbox.disabled = setting.supported !== true;
+    message.textContent = setting.supported === true
+      ? enabled ? "Starts in the tray when you sign in" : "Start on sign-in is off"
+      : setting.explanation || "Startup setting unavailable";
+  };
+  try {
+    apply(await bridge.getStartOnLogin());
+  } catch (error) {
+    checkbox.disabled = true;
+    message.textContent = "Could not read the startup setting";
+    return;
+  }
+  checkbox.addEventListener("change", async () => {
+    const requested = checkbox.checked;
+    checkbox.disabled = true;
+    message.textContent = "Updating startup setting…";
+    try {
+      apply(await bridge.setStartOnLogin(requested));
+    } catch (error) {
+      checkbox.checked = enabled;
+      checkbox.disabled = false;
+      message.textContent = "Could not change the startup setting. Try again.";
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  setupStartupSetting();
   initChart();
   document.querySelectorAll(".history-range-btn").forEach((button) =>
     button.addEventListener("click", () => setHistoryRange(button.dataset.range)));

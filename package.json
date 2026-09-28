@@ -71,6 +71,7 @@
       "main.js",
       "preload.js",
       "renderer/**/*",
+      "assets/**/*",
       "package.json"
     ]
   },
@@ -79,7 +80,6 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "canvas": "^3.2.0",
     "chart.js": "^4.4.1"
   }
 }

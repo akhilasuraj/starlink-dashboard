@@ -1,10 +1,7 @@
 ; Custom NSIS script for Starlink Dashboard installer
-; This script adds the application to Windows startup registry
+; Startup is opt-in from the installed application's settings.
 
 !macro customInstall
-  ; Add to startup registry for current user with --hidden flag
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "StarlinkDashboard" '"$INSTDIR\${APP_EXECUTABLE_FILENAME}" --hidden'
-  
   ; Copy Python dependency installer and checker scripts
   SetOutPath "$INSTDIR"
   File "${BUILD_RESOURCES_DIR}\setup-python-deps.bat"
@@ -26,6 +23,9 @@
 !macro customUnInstall
   ; Remove from startup registry
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "StarlinkDashboard"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "com.starlink.dashboard"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "StarlinkDashboard"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "com.starlink.dashboard"
   
   ; Delete the setup scripts
   Delete "$INSTDIR\setup-python-deps.bat"

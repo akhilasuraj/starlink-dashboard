@@ -1,10 +1,12 @@
 import asyncio
 import json
+import os
 import tempfile
 import threading
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -308,6 +310,82 @@ class StatusApiTests(unittest.TestCase):
         self.assertEqual(status["metrics"]["azimuth_deg"]["availability"], "unavailable")
         self.assertTrue(status["capabilities"]["download_mbps"])
         self.assertFalse(status["capabilities"]["azimuth_deg"])
+
+    def test_reported_ping_loss_is_impairment_without_confirming_an_outage(self):
+        collector = self.collector({**self.fixture("online-idle.json"), "pop_ping_drop_rate": 0.1})
+        asyncio.run(collector.poll_once())
+        status = self.status()
+        self.assertEqual(status["collection_state"], "reachable")
+        self.assertEqual(status["service_state"], "impaired")
+        self.assertEqual(status["status_text"], "Service impaired")
+        self.assertEqual(self.client.get("/api/history").json()["outages"], [])
+
+    def test_storage_initialization_failure_reports_error_and_next_poll_recovers(self):
+        blocked_directory = Path(self.temp.name) / "data"
+        blocked_directory.write_text("not a directory", encoding="utf-8")
+        collector = Collector(FixtureTransport(self.fixture("online-idle.json")), now=lambda: self.clock)
+        app.state.collector = collector
+        with patch.dict(os.environ, {"STARLINK_DASHBOARD_DATA_DIR": str(blocked_directory)}):
+            asyncio.run(collector.poll_once())
+            self.assertEqual(self.status()["collection_state"], "collector_error")
+            self.assertEqual(self.status()["service_state"], "unknown")
+            blocked_directory.unlink()
+            self.clock += timedelta(seconds=2)
+            asyncio.run(collector.poll_once())
+        self.assertEqual(self.status()["collection_state"], "reachable")
+        samples = self.client.get("/api/history").json()["samples"]
+        observed = [sample for sample in samples if sample["time_basis"] != "uncollected"]
+        self.assertEqual([sample["at"] for sample in observed], ["2026-09-27T12:00:02Z"])
+
+    def test_storage_write_and_gap_record_failure_do_not_stop_polling_or_invent_history(self):
+        reading = self.fixture("online-idle.json")
+        collector = self.collector(reading, reading, reading)
+        asyncio.run(collector.poll_once())
+        database = collector.history_store.path
+        saved = database.with_suffix(".saved")
+        database.rename(saved)
+        database.mkdir()
+        try:
+            self.clock += timedelta(seconds=2)
+            asyncio.run(collector.poll_once())
+            self.assertEqual(self.status()["collection_state"], "collector_error")
+            self.assertEqual(self.status()["service_state"], "unknown")
+        finally:
+            database.rmdir()
+            saved.rename(database)
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        self.assertEqual(self.status()["collection_state"], "reachable")
+        history = self.client.get("/api/history").json()
+        observed = [sample for sample in history["samples"] if sample["time_basis"] != "uncollected"]
+        self.assertEqual([sample["at"] for sample in observed],
+                         ["2026-09-27T12:00:00Z", "2026-09-27T12:00:04Z"])
+        self.assertTrue(any(sample["time_basis"] == "uncollected" and
+                            "12:00:00" < sample["at"][11:19] < "12:00:04"
+                            for sample in history["samples"]))
+        self.assertEqual(history["outages"], [])
+
+    def test_recovered_storage_does_not_bridge_outage_confirmation_across_failed_writes(self):
+        offline = self.fixture("service-offline.json")
+        collector = self.collector(offline, offline, offline)
+        asyncio.run(collector.poll_once())
+        database = collector.history_store.path
+        saved = database.with_suffix(".saved")
+        database.rename(saved)
+        database.mkdir()
+        try:
+            self.clock += timedelta(seconds=2)
+            asyncio.run(collector.poll_once())
+        finally:
+            database.rmdir()
+            saved.rename(database)
+        self.clock += timedelta(seconds=2)
+        asyncio.run(collector.poll_once())
+        outages = self.client.get("/api/history").json()["outages"]
+        self.assertEqual(len(outages), 2)
+        self.assertEqual(outages[0]["end_state"], "unobserved")
+        self.assertEqual(outages[0]["last_confirmed_at"], "2026-09-27T12:00:00Z")
+        self.assertEqual(outages[1]["first_observed_at"], "2026-09-27T12:00:04Z")
 
     def test_dish_reported_outage_is_offline_despite_successful_poll(self):
         collector = self.collector(self.fixture("service-offline.json"))
