@@ -28,6 +28,7 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
   const app = new EventEmitter();
   Object.assign(app, {
     isPackaged: true, quitCount: 0, appId: "electron.test-default",
+    getVersion: () => require("../package.json").version,
     setAppUserModelId(value) { this.appId = value; },
     requestSingleInstanceLock: () => lock,
     whenReady: () => Promise.resolve(),
@@ -54,6 +55,13 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
       app.emit("before-quit", { preventDefault() { prevented = true; } });
       if (!prevented) { app.quitCount += 1; app.emit("will-quit", { preventDefault() {} }); }
     },
+  });
+  const updater = new EventEmitter();
+  Object.assign(updater, { checks: 0, downloads: 0, installs: 0,
+    setFeedURL(feed) { this.feed = feed; },
+    async checkForUpdates() { this.checks++; this.emit("update-available", { version: "1.4.0" }); },
+    async downloadUpdate() { this.downloads++; this.emit("update-downloaded"); },
+    quitAndInstall() { this.installs++; if (this.installError) throw new Error("fixture installer failure"); app.quit(); },
   });
   class Window extends EventEmitter {
     constructor(options) {
@@ -90,6 +98,8 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
     __dirname: root, process: fakeProcess, console: { log() {}, error() {} }, Date: ClockDate,
     AbortSignal, Buffer,
     require(name) {
+      if (name === "./updater") return require("../updater");
+      if (name === "electron-updater") return { autoUpdater: updater };
       if (name === "electron") return { app, BrowserWindow: Window, Tray,
         Menu: { buildFromTemplate: (items) => items },
         ipcMain: { handle: (channel, callback) => handlers.set(channel, callback) },
@@ -114,7 +124,7 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
   });
   vm.runInContext(source, context);
   return {
-    app, windows, trays, children, intervals, timeouts, loginChanges, loginQueries, loginRegistry, requests,
+    app, updater, windows, trays, children, intervals, timeouts, loginChanges, loginQueries, loginRegistry, requests,
     async ready() {
       await Promise.resolve(); await Promise.resolve();
       children.at(-1)?.stdout.emit("data", Buffer.from('{"event":"collector-listening","port":49152}\n'));
@@ -170,7 +180,7 @@ test("tray follows observed health and recovery without spawning another collect
   desktop.trays[0].emit("click");
   assert.equal(desktop.windows.length, 2);
   assert.equal(desktop.children.length, 1);
-  assert.equal(desktop.intervals.size, 1);
+  assert.equal([...desktop.intervals.values()].filter(timer => timer.delay === 2000).length, 1);
 });
 
 test("desktop reads through a constrained private collector session", async () => {
@@ -195,11 +205,11 @@ test("hidden sign-in launch monitors from the tray and collector exit retries on
   await desktop.ready();
   assert.equal(desktop.windows.length, 1);
   assert.equal(desktop.windows[0].visible, false);
-  assert.equal(desktop.intervals.size, 1);
+  assert.equal([...desktop.intervals.values()].filter(timer => timer.delay === 2000).length, 1);
   desktop.failFetch(); await desktop.poll();
   assert.match(desktop.trays[0].tooltip, /Collector unavailable/);
   desktop.children[0].emit("close", 1);
-  assert.equal(desktop.timeouts.size, 1);
+  assert.equal([...desktop.timeouts.values()].filter(timer => timer.delay === 1000).length, 1);
   await desktop.runTimeouts();
   assert.equal(desktop.children.length, 2);
   desktop.recoverFetch(); await desktop.poll(apiStatus("online-idle"));
@@ -213,11 +223,11 @@ test("spawn error followed by close schedules one retry and live-child errors do
   const desktop = desktopMain(apiStatus("online-idle"));
   await desktop.ready();
   desktop.children[0].emit("error", new Error("child communication error"));
-  assert.equal(desktop.timeouts.size, 0);
+  assert.equal([...desktop.timeouts.values()].filter(timer => timer.delay === 1000).length, 0);
   desktop.children[0].pid = undefined;
   desktop.children[0].emit("error", new Error("spawn failed"));
   desktop.children[0].emit("close", 1);
-  assert.equal(desktop.timeouts.size, 1);
+  assert.equal([...desktop.timeouts.values()].filter(timer => timer.delay === 1000).length, 1);
   await desktop.runTimeouts();
   assert.equal(desktop.children.length, 2);
 });
@@ -302,7 +312,61 @@ test("preload exposes finite desktop methods without an endpoint or session secr
   await bridges.desktopAPI.getHistory("7d");
   await bridges.desktopAPI.getLogs();
   await bridges.desktopAPI.clearLogs();
+  await bridges.desktopUpdates.getState();
+  await bridges.desktopUpdates.check();
+  await bridges.desktopUpdates.download();
+  await bridges.desktopUpdates.install();
   assert.deepEqual(calls, [["startup:get"], ["startup:set", true], ["collector:status"],
-    ["collector:history", "7d"], ["collector:logs"], ["collector:clear-logs"]]);
+    ["collector:history", "7d"], ["collector:logs"], ["collector:clear-logs"],
+    ["updates:get"], ["updates:check"], ["updates:download"], ["updates:install"]]);
   assert.deepEqual(Object.keys(bridges.desktopAPI).sort(), ["clearLogs", "getHistory", "getLogs", "getStatus"]);
+  assert.deepEqual(Object.keys(bridges.desktopUpdates).sort(), ["check", "download", "getState", "install"]);
+});
+
+test("update installation waits for collector exit, including forced shutdown, and never restarts collection", async () => {
+  const desktop = desktopMain(apiStatus("online-idle"));
+  await desktop.ready();
+  for (const channel of ["updates:get", "updates:check", "updates:download", "updates:install"]) {
+    await assert.rejects(() => desktop.foreignIpc(channel), /Unknown dashboard/);
+    await assert.rejects(() => desktop.foreignIpc(channel, true), /Unknown dashboard/);
+  }
+  assert.equal(desktop.updater.installs, 0);
+  await desktop.ipc("updates:check");
+  await desktop.ipc("updates:download");
+  const child = desktop.children[0]; child.closeOnKill = false;
+  await desktop.ipc("updates:install");
+  assert.equal(desktop.updater.installs, 0);
+  assert.equal(desktop.app.quitCount, 0);
+  assert.equal(child.signals[0], "SIGTERM");
+  await desktop.runTimeouts();
+  assert.deepEqual(child.signals, ["SIGTERM", "SIGKILL"]);
+  assert.equal(desktop.updater.installs, 0);
+  child.emit("close", 0);
+  assert.equal(desktop.updater.installs, 1);
+  assert.equal(desktop.app.quitCount, 1);
+  assert.equal(desktop.children.length, 1);
+  assert.equal(desktop.intervals.size, 0);
+  assert.equal(desktop.loginChanges.length, 0);
+});
+
+test("ordinary quit/logoff does not install a downloaded update; launch failure restores one collector", async () => {
+  for (const sessionEnd of [false, true]) {
+    const desktop = desktopMain(apiStatus("online-idle")); await desktop.ready();
+    await desktop.ipc("updates:check"); await desktop.ipc("updates:download");
+    if (sessionEnd) desktop.windows[0].emit("session-end"); else desktop.app.quit();
+    assert.equal(desktop.updater.installs, 0);
+    assert.equal(desktop.intervals.size, 0);
+  }
+  const desktop = desktopMain(apiStatus("online-idle")); await desktop.ready();
+  await desktop.ipc("updates:check"); await desktop.ipc("updates:download");
+  desktop.updater.installError = true;
+  await desktop.ipc("updates:install");
+  assert.equal(desktop.app.quitCount, 0);
+  assert.equal(desktop.children.length, 2);
+  assert.equal(desktop.children[1].killCount, 0);
+  assert.equal((await desktop.ipc("updates:get")).phase, "error");
+  assert.equal([...desktop.intervals.values()].filter(timer => timer.delay === 2000).length, 1);
+  assert.equal(desktop.loginChanges.length, 0);
+  desktop.app.quit();
+  assert.equal(desktop.app.quitCount, 1);
 });

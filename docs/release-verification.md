@@ -1,6 +1,6 @@
 # Release verification
 
-The current release candidate is **1.2.0**, the mobile-inspired UI refresh. The earlier revival release was 1.1.1. Local builds and ordinary push/PR workflow runs never publish a release. The earlier 1.0.2 installer built during development is historical packaging evidence, not the final candidate artifact.
+The current release candidate is **1.3.0**, adding in-app updates. The mobile-inspired UI release was 1.2.0. The earlier revival release was 1.1.1. Local builds and ordinary push/PR workflow runs never publish a release. The earlier 1.0.2 installer built during development is historical packaging evidence, not the final candidate artifact.
 
 ## One workflow
 
@@ -56,3 +56,9 @@ No release is complete merely because local tests or a build passed. Offline CI 
 PR #15 adapts the desktop to current official Starlink mobile imagery and adds an original generated icon. [Fixture UI evidence](validation/ui-refresh/README.md) covers all five views at wide and compact sizes, keyboard activation, history ranges, error/unavailable states, long values and actual chart sizing. All 37 behavioral tests and the 20-screenshot development Electron check passed before the version bump.
 
 Telemetry, storage and private IPC contracts are unchanged. The historical live hardware evidence above remains scoped to its original runtime/source; it is not a live validation of the new UI installer. The new version must pass the full hosted workflow, including an offline install of its exact installer bytes, before publication. Existing acknowledged hardware limitations keep this release a prerelease. [Version notes](releases/v1.2.0.md) describe the changes and validation boundaries.
+
+## 1.3.0 update release
+
+[Update implementation](auto-update.md) and [Plezy research](auto-update-research.md) describe the interaction and release feed. The final installer must pass metadata validation and an installed two-version upgrade on a disposable hosted runner in addition to the existing offline installation gate. Publish the installer, matching blockmap and `latest.yml` in a draft release, then expose the completed release. The current version policy includes GitHub prereleases and forbids downgrades.
+
+Existing 1.2.0 users need a manual bootstrap install. Historical hardware evidence retains its original scope; updater fixtures and hosted installer tests do not constitute new live dish validation. The unsigned release does not claim cryptographic publisher authentication. Interactive installer behavior requires a manual check; the hosted transition uses a test-only silent adaptation for unattended execution.

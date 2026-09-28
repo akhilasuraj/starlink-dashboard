@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
 const { randomBytes } = require("crypto");
+const { createUpdateController } = require("./updater");
 const APP_ID = "com.starlink.dashboard";
 
 let tray = null;
@@ -18,6 +19,8 @@ let isQuitting = false;
 let shutdownComplete = false;
 let sessionEnding = false;
 let collectorSession = null;
+let updateController = null;
+let installUpdateRequested = false;
 
 async function collectorRequest(route, method = "GET", timeout = 15000) {
   const session = collectorSession;
@@ -211,6 +214,11 @@ function checkSender(event) {
 function completeQuit() {
   if (shutdownComplete) return;
   if (shutdownTimer !== null) { clearTimeout(shutdownTimer); shutdownTimer = null; }
+  if (installUpdateRequested) {
+    shutdownComplete = true;
+    updateController.installAfterCollectorStopped();
+    return;
+  }
   if (tray) { tray.destroy(); tray = null; }
   shutdownComplete = true;
   app.quit();
@@ -218,6 +226,7 @@ function completeQuit() {
 
 function stopDesktopTimers() {
   isQuitting = true;
+  updateController?.stop();
   if (statusTimer !== null) { clearInterval(statusTimer); statusTimer = null; }
   if (restartTimer !== null) { clearTimeout(restartTimer); restartTimer = null; }
 }
@@ -247,6 +256,10 @@ if (!app.requestSingleInstanceLock()) {
   app.on("activate", showWindow);
   app.on("window-all-closed", () => {}); // The tray owns the app while the window is hidden.
   app.on("before-quit", quitWithCollector);
+  app.on("will-quit", () => {
+    updateController?.stop();
+    if (tray) { tray.destroy(); tray = null; }
+  });
   process.on("exit", () => { if (backendProcess) backendProcess.kill(); });
   ipcMain.handle("startup:get", (event) => { checkSender(event); return getStartupSetting(); });
   ipcMain.handle("collector:status", (event) => {
@@ -269,12 +282,38 @@ if (!app.requestSingleInstanceLock()) {
     app.setLoginItemSettings({ ...loginOptions(), openAtLogin: enabled, enabled });
     return getStartupSetting();
   });
+  ipcMain.handle("updates:get", (event) => {
+    checkSender(event);
+    return updateController.snapshot();
+  });
+  for (const [channel, action] of [["updates:check", "check"], ["updates:download", "download"], ["updates:install", "requestInstall"]]) {
+    ipcMain.handle(channel, (event) => {
+      checkSender(event);
+      if (isQuitting) throw new Error("App is shutting down");
+      return updateController[action]();
+    });
+  }
   app.whenReady().then(() => {
     if (isQuitting) return;
     createTray();
     startBackend();
     // Keep a hidden native window to receive Windows session-end during logoff.
     createWindow(!process.argv.includes("--hidden"));
+    updateController = createUpdateController({
+      updater: app.isPackaged && process.platform === "win32" ? require("electron-updater").autoUpdater : null,
+      version: app.getVersion(),
+      timers: { setTimeout, clearTimeout, setInterval, clearInterval },
+      onInstallRequested: () => { installUpdateRequested = true; app.quit(); },
+      onInstallFailed: () => {
+        if (!installUpdateRequested || sessionEnding) return;
+        installUpdateRequested = shutdownComplete = isQuitting = false;
+        startBackend();
+        statusTimer = setInterval(updateTrayStatus, 2000);
+        updateController.start();
+        updateTrayStatus();
+      },
+    });
+    updateController.start();
     statusTimer = setInterval(updateTrayStatus, 2000);
     updateTrayStatus();
   });

@@ -25,6 +25,10 @@
           <div class="history-range-selector" role="group" aria-label="History time range"><button class="history-range-btn active" data-range="15m" aria-pressed="true">15 min</button><button class="history-range-btn" data-range="24h" aria-pressed="false">24 hours</button><button class="history-range-btn" data-range="7d" aria-pressed="false">7 days</button></div>
           <p id="guidance" class="guidance" hidden></p>
         </header>
+        <section id="update-notice" class="update-notice" hidden aria-label="App update">
+          <p id="update-notice-message" role="status"></p>
+          <button id="update-notice-action" class="clear-btn" hidden></button>
+        </section>
         <div class="view-heading"><h2 id="view-title">Overview</h2><span id="view-description">Current readings and observed traffic</span></div>
         <div class="tab-content"><div id="network" role="tabpanel" aria-labelledby="nav-network" tabindex="0" class="tab-pane active">
           <section class="connection-panel panel" aria-label="Local monitoring path">
@@ -137,6 +141,13 @@
           </div>
         </div>
 <div id="device" hidden role="tabpanel" aria-labelledby="nav-device" tabindex="0" class="tab-pane">
+          <section class="device-section panel" aria-labelledby="updates-title">
+            <div class="section-heading"><h3 id="updates-title">App updates</h3><span id="app-version" class="reading-meta"></span></div>
+            <p id="update-message" class="reading-meta" role="status">Reading update status…</p>
+            <progress id="update-progress" class="update-progress" max="100" value="0" hidden aria-label="Update download progress"></progress>
+            <div class="update-actions"><button id="update-check" class="clear-btn" disabled>Check for updates</button><button id="update-action" class="clear-btn" hidden></button></div>
+            <p id="update-policy" class="reading-meta">Checks automatically on launch and every 6 hours. Includes prerelease versions. Download and restart only when you choose. Local history is retained.</p>
+          </section>
           <section class="device-section panel">
             <h3>Desktop preferences</h3>
             <label><input id="start-on-login" type="checkbox" disabled /> Start on sign-in</label>
@@ -206,5 +217,6 @@
       </main>
     </div>
     <script src="app.js"></script>
+    <script src="updates.js"></script>
   </body>
 </html>
