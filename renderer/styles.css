@@ -168,9 +168,14 @@ body {
   overflow: hidden;
 }
 
-#speedChart {
+.traffic-chart {
   flex: 1;
   min-height: 0;
+  position: relative;
+}
+
+#speedChart {
+  display: block;
 }
 
 .quality-chart {

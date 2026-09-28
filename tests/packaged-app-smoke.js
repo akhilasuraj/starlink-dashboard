@@ -98,6 +98,19 @@ try {
   assert.ok(result.status.collection_state);
   assert.notEqual(result.status.collection_state, "collector_error", "Bundled runtime failed collection");
   assert.deepEqual(result.methods, ["clearLogs", "getHistory", "getLogs", "getStatus"]);
+  // Exercise real layout after resizing; a flexed canvas can stretch independently
+  // of Chart.js's drawing size and distort labels even when the data is correct.
+  for (const [width, height] of [[600, 750], [1000, 1050]]) {
+    await evaluate(`${electron}.BrowserWindow.getAllWindows()[0].setSize(${width},${height})`);
+    await pause(750);
+    const layout = await evaluate(`${electron}.BrowserWindow.getAllWindows()[0].webContents.executeJavaScript(${JSON.stringify(`(() => {
+      const chart = Chart.getChart("speedChart");
+      const rectangle = document.getElementById("speedChart").getBoundingClientRect();
+      return { width: chart.width, height: chart.height, displayedWidth: rectangle.width, displayedHeight: rectangle.height };
+    })()`)});`);
+    assert.ok(Math.abs(layout.width - layout.displayedWidth) <= 2, "Traffic canvas width differs from its drawing size");
+    assert.ok(Math.abs(layout.height - layout.displayedHeight) <= 2, "Traffic canvas height differs from its drawing size");
+  }
   const pids = collectorProcesses();
   assert.equal(pids.length, 1, "One app owns exactly one bundled collector");
   const duplicate = spawn(executable, ["--hidden"], { env, cwd: directory, windowsHide: true });
@@ -107,7 +120,7 @@ try {
   assert.equal(code, 0);
   assert.deepEqual(collectorProcesses(), pids, "Duplicate launch created another collector");
   console.log(JSON.stringify({ windowLoaded: true, chartLoaded: true,
-    privateBridge: true, collectorCount: 1, duplicateExited: true,
+    privateBridge: true, chartResizeVerified: true, collectorCount: 1, duplicateExited: true,
     collectionState: result.status.collection_state, pythonOnPath: false }));
 } finally {
   let cleanupError;

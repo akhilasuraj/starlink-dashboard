@@ -1,6 +1,6 @@
 # Release verification
 
-The revival candidate is **1.1.0**. Local builds and ordinary push/PR workflow runs never publish a release. The earlier 1.0.2 installer built during development is historical packaging evidence, not the final candidate artifact.
+The revival candidate is **1.1.1**. Local builds and ordinary push/PR workflow runs never publish a release. The earlier 1.0.2 installer built during development is historical packaging evidence, not the final candidate artifact.
 
 ## One workflow
 
@@ -16,7 +16,11 @@ The job uploads the installer and machine-readable evidence. A failed check bloc
 
 Observed dish hardware/firmware: `rev4_catapult_proto1` / `2026.09.14.mr86848`. Router: `v3` / `2026.09.09.mr85833`. Status, 900 history samples, official dish/router diagnostics and obstruction-map requests succeeded. Collector and transport instances were recreated against the same sanitized local store, returning reachable with retained history.
 
-This was not an induced dish/service interruption or a live desktop-process restart. Reported-outage and longer disconnection cases remain fixture-tested. Owner acceptance is pending. Those limitations are explicit in the record; this session is not a complete hardware release pass.
+The owner reported that the app works and authorized publication after verification. A subsequent isolated live desktop check passed against the same dish: 15-minute/24-hour/7-day switching, observed ping-success agreement with the API, chart units, missing-data presentation, and obstruction readings. Only the test app's collector was interrupted; it recovered fresh readings, retained history, and created no duplicate timestamps. Quitting and relaunching with the same test profile also retained history, resumed collection, and left no collector behind. Startup settings were unchanged.
+
+[Desktop evidence](validation/desktop-2026-09-28.json) records these results, binary/source provenance, timestamps and screenshots. Live testing exposed distorted traffic charts at smaller window sizes and Statistics headings fixed to 15 minutes; both are corrected in 1.1.1. The packaged-app smoke now checks actual canvas drawing/display dimensions at two window sizes.
+
+The live test used an isolated copy of the installed 1.1.0 Electron runtime and frozen collector with reviewed 1.1.1 source. It is not a live pass of a newly built 1.1.1 installer; hosted CI separately verifies that final artifact. No physical dish/service outage was induced. Reported-outage and longer disconnection cases remain fixture-tested, and the service plan remains unknown. The record stays partial and the release is a prerelease with these explicit limits.
 
 The saved capture is allowlisted before persistence: IDs, serial/account information, location, MAC/IP addresses and unneeded nested fields are omitted. Its raw-byte hash is recorded and tested; captured fixtures use UTF-8/LF to preserve hash integrity across checkouts.
 
@@ -34,7 +38,7 @@ The command refuses existing output paths. Review the sanitized capture before c
 
 ## Publication gate
 
-Configure required reviewers on the GitHub **release** environment. Run the manual workflow on the intended commit with publication enabled only after reviewing its evidence. The version tag (for example `v1.1.0`) must already point to that exact commit and match `package.json`; this workflow does not create tags.
+Configure required reviewers on the GitHub **release** environment. Run the manual workflow on the intended commit with publication enabled only after reviewing its evidence. The version tag (for example `v1.1.1`) must already point to that exact commit and match `package.json`; this workflow does not create tags.
 
 The publication job consumes the installer from its own successful verification job. `build/release-gate.js` requires offline evidence for that exact commit/run and hashes the downloaded installer to ensure the published bytes are the tested bytes. It checks live hardware evidence and the saved capture hash. An accepted hardware record permits publication; any remaining limitations or pending owner acceptance require the explicit manual **acknowledge limitations** input. Partial or limited validation is published as a prerelease with its limitations in release notes.
 
