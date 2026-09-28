@@ -9,65 +9,66 @@
     <script src="../node_modules/chart.js/dist/chart.umd.js"></script>
   </head>
   <body>
-    <div class="container">
-      <!-- Header -->
-      <div class="header">
-        <h1 id="status">CONNECTING...</h1>
-        <p id="collection-state">Waiting for collector</p>
-        <p id="observed-at">No reading yet</p>
-        <p id="guidance" class="guidance" hidden></p>
-      </div>
-
-      <div class="history-range-selector" role="group" aria-label="History time range">
-        <button class="history-range-btn active" data-range="15m" aria-pressed="true">15 MIN</button>
-        <button class="history-range-btn" data-range="24h" aria-pressed="false">24 HOURS</button>
-        <button class="history-range-btn" data-range="7d" aria-pressed="false">7 DAYS</button>
-      </div>
-
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="network">NETWORK</button>
-        <button class="tab-btn" data-tab="statistics">STATISTICS</button>
-        <button class="tab-btn" data-tab="obstruction">OBSTRUCTION</button>
-        <button class="tab-btn" data-tab="device">DEVICE</button>
-        <button class="tab-btn" data-tab="logs">LOGS</button>
-      </div>
-
-      <!-- Tab Content -->
-      <div class="tab-content">
-        <!-- Network Tab -->
-        <div id="network" class="tab-pane active">
-          <div class="stats-row">
+    <div class="container app-shell">
+      <aside class="sidebar">
+        <div class="brand"><img src="../assets/app-icon.png" alt="" width="42" height="42"/><div><span class="brand-name">Starlink</span><span class="brand-description">Desktop monitor</span></div></div>
+        <nav class="tabs" role="tablist" aria-label="Dashboard views"><button id="nav-network" class="tab-btn active" data-tab="network" role="tab" aria-controls="network" aria-selected="true" tabindex="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v11H3Z"/><path d="M9 21v-8h6v8"/></svg><span>Overview</span><span class="nav-chevron" aria-hidden="true">›</span></button>
+<button id="nav-statistics" class="tab-btn" data-tab="statistics" role="tab" aria-controls="statistics" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9m8 11V4m8 16v-7"/></svg><span>Statistics</span><span class="nav-chevron" aria-hidden="true">›</span></button>
+<button id="nav-obstruction" class="tab-btn" data-tab="obstruction" role="tab" aria-controls="obstruction" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-6 6-6 12 0 18 6-6 6-12 0-18Z"/></svg><span>Obstructions</span><span class="nav-chevron" aria-hidden="true">›</span></button>
+<button id="nav-device" class="tab-btn" data-tab="device" role="tab" aria-controls="device" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H4Zm4 16h8m-4-4v4"/></svg><span>Devices</span><span class="nav-chevron" aria-hidden="true">›</span></button>
+<button id="nav-logs" class="tab-btn" data-tab="logs" role="tab" aria-controls="logs" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6Zm3 5h6m-6 4h6m-6 4h4"/></svg><span>Collector logs</span><span class="nav-chevron" aria-hidden="true">›</span></button></nav>
+        <p class="sidebar-note">Local monitoring.<br/>Your history stays on this PC.</p>
+      </aside>
+      <main class="app-main">
+        <header class="header">
+          <div class="health-summary"><div class="status-line"><span id="status-dot" class="status-dot" aria-hidden="true"></span><h1 id="status">COLLECTING</h1></div><p id="collection-state">Waiting for collector</p><p id="reading-time">No reading yet</p><details class="status-details"><summary>Reading details</summary><p id="observed-at">No reading yet</p></details></div>
+          <div class="history-range-selector" role="group" aria-label="History time range"><button class="history-range-btn active" data-range="15m" aria-pressed="true">15 min</button><button class="history-range-btn" data-range="24h" aria-pressed="false">24 hours</button><button class="history-range-btn" data-range="7d" aria-pressed="false">7 days</button></div>
+          <p id="guidance" class="guidance" hidden></p>
+        </header>
+        <div class="view-heading"><h2 id="view-title">Overview</h2><span id="view-description">Current readings and observed traffic</span></div>
+        <div class="tab-content"><div id="network" role="tabpanel" aria-labelledby="nav-network" tabindex="0" class="tab-pane active">
+          <section class="connection-panel panel" aria-label="Local monitoring path">
+  <div><h2>Your local connection</h2><p>Read-only monitoring from this PC.</p><p class="reading-meta">Schematic monitoring path; router diagnostics are optional.</p></div>
+  <svg class="connection-art" viewBox="0 0 400 130" aria-hidden="true">
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+      <path d="M24 43 84 26 110 49 48 68Z" fill="#e4e4e4"/><path d="m65 64-8 30m-17 9h49m-32-9 32 9"/>
+      <path d="M91 13q20 4 29 23m-17-32q25 6 35 29" opacity=".45"/>
+      <path d="M202 34h29v60h-29zM202 86h29m-14-45v32"/>
+      <path d="M308 38h68v47h-68zm-8 57h84l-8-10h-68z"/>
+      <path d="M122 64h62m64 0h45" stroke="#777" stroke-dasharray="3 6"/>
+    </g><g fill="#a0a0a0" font-family="Segoe UI, sans-serif" font-size="11" text-anchor="middle">
+      <text x="67" y="125">Dish</text><text x="216" y="125">Optional router</text><text x="342" y="125">This PC</text>
+    </g>
+  </svg>
+</section><div class="stats-row">
             <div class="stat-card">
-              <div class="stat-label">CURRENT DOWNLOAD TRAFFIC</div>
+              <div class="stat-label">Download traffic</div>
               <div class="stat-value" id="download">--</div>
               <div class="stat-unit">Mbps</div>
-              <div class="reading-meta" id="download-meta">Unavailable</div>
+              <details class="metric-details"><summary>Source and time</summary><div class="reading-meta" id="download-meta">Unavailable</div></details>
             </div>
             <div class="stat-card">
-              <div class="stat-label">CURRENT UPLOAD TRAFFIC</div>
+              <div class="stat-label">Upload traffic</div>
               <div class="stat-value" id="upload">--</div>
               <div class="stat-unit">Mbps</div>
-              <div class="reading-meta" id="upload-meta">Unavailable</div>
+              <details class="metric-details"><summary>Source and time</summary><div class="reading-meta" id="upload-meta">Unavailable</div></details>
             </div>
             <div class="stat-card">
-              <div class="stat-label">LATENCY</div>
+              <div class="stat-label">Current latency</div>
               <div class="stat-value" id="latency">--</div>
               <div class="stat-unit">ms</div>
-              <div class="reading-meta" id="latency-meta">Unavailable</div>
+              <details class="metric-details"><summary>Source and time</summary><div class="reading-meta" id="latency-meta">Unavailable</div></details>
             </div>
           </div>
-          <div class="graph-container">
+          <section class="graph-container panel"><div class="section-heading"><h2>Traffic history</h2><span class="legend"><i class="download-key"></i>Download <i class="upload-key"></i>Upload</span></div>
             <p id="history-window" class="reading-meta">Last 15 minutes · No observations yet</p>
             <p id="traffic-explainer" class="reading-meta">Dish traffic is current usage, not a speed test or available capacity.</p>
             <div class="traffic-chart"><canvas id="speedChart"></canvas></div>
             <p id="history-time-note" class="reading-meta">Waiting for history</p>
-          </div>
+          </section>
         </div>
-
-        <!-- Statistics Tab -->
-        <div id="statistics" class="tab-pane">
-          <div class="stats-list">
+<div id="statistics" hidden role="tabpanel" aria-labelledby="nav-statistics" tabindex="0" class="tab-pane">
+          <div class="stats-list quality-grid">
             <p id="quality-window" class="reading-meta">Last 15 minutes · No observations yet</p>
             <div class="stat-item">
               <div class="stat-item-header"><span class="stat-item-title">Observed ping success</span></div>
@@ -83,8 +84,8 @@
                 <span class="stat-large" id="drop-rate">--</span>
                 <span class="stat-unit">%</span>
               </div>
-              <div class="stat-item-subtitle" id="drop-rate-meta">Unavailable</div>
-            </div>
+              <details class="metric-details"><summary>Source and time</summary><div class="stat-item-subtitle" id="drop-rate-meta">Unavailable</div></details>
+            <p class="reading-meta">Ping drop history</p><div class="quality-chart"><canvas id="lossChart"></canvas></div></div>
             <div class="stat-item">
               <div class="stat-item-header">
                 <span class="stat-item-title">Current latency</span>
@@ -93,8 +94,8 @@
                 <span class="stat-large" id="latency-stat">--</span>
                 <span class="stat-unit">ms</span>
               </div>
-              <div class="stat-item-subtitle" id="latency-stat-meta">Unavailable</div>
-            </div>
+              <details class="metric-details"><summary>Source and time</summary><div class="stat-item-subtitle" id="latency-stat-meta">Unavailable</div></details>
+            <p class="reading-meta">Latency history</p><div class="quality-chart"><canvas id="latencyChart"></canvas></div></div>
             <div class="stat-item">
               <div class="stat-item-header">
                 <span class="stat-item-title">Dish uptime since reboot</span>
@@ -102,21 +103,15 @@
               <div class="stat-item-value">
                 <span class="stat-large" id="dish-uptime">--</span>
               </div>
-              <div class="stat-item-subtitle" id="dish-uptime-meta">Unavailable</div>
+              <details class="metric-details"><summary>Source and time</summary><div class="stat-item-subtitle" id="dish-uptime-meta">Unavailable</div></details>
             </div>
             <div class="stat-item">
               <div class="stat-item-title">Dish alerts</div>
               <div id="dish-alerts" class="alert-summary">Dish alerts unavailable</div>
               <div id="dish-alerts-meta" class="reading-meta">Not reported by this dish</div>
             </div>
-            <div class="stat-item">
-              <div class="stat-item-title">Observed latency</div>
-              <div class="quality-chart"><canvas id="latencyChart"></canvas></div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-item-title">Observed ping drop rate</div>
-              <div class="quality-chart"><canvas id="lossChart"></canvas></div>
-            </div>
+
+
             <div class="stat-item">
               <div class="stat-item-title">Dish-reported outages</div>
               <p id="outage-window" class="reading-meta">Last 15 minutes · No observations yet</p>
@@ -126,34 +121,30 @@
             </div>
           </div>
         </div>
-
-        <!-- Obstruction Tab -->
-        <div id="obstruction" class="tab-pane">
-          <div class="obstruction-info">
+<div id="obstruction" hidden role="tabpanel" aria-labelledby="nav-obstruction" tabindex="0" class="tab-pane">
+          <div class="obstruction-info panel">
             <h3 id="obstruction-text">Obstruction: Unavailable</h3>
-            <p class="reading-meta" id="obstruction-meta">Unavailable</p>
+            <details class="metric-details"><summary>Source and time</summary><p class="reading-meta" id="obstruction-meta">Unavailable</p></details>
             <div id="obstruction-progress" class="progress-bar" hidden>
               <div id="obstruction-bar" class="progress-fill"></div>
             </div>
             <p id="obstruction-current">Currently obstructed: Unavailable</p>
-            <p class="reading-meta" id="obstruction-current-meta">Unavailable</p>
+            <details class="metric-details"><summary>Source and time</summary><p class="reading-meta" id="obstruction-current-meta">Unavailable</p></details>
             <h3>Directional SNR samples</h3>
             <p class="reading-meta">Directional SNR samples indicate received signal by direction; they are not an exact obstruction outline or a camera view.</p>
             <p class="reading-meta" id="obstruction-snr-meta">Not reported by this dish or firmware</p>
             <div id="obstruction-snr-grid" class="snr-grid" role="img" aria-label="Dish directional signal-to-noise ratio samples"></div>
           </div>
         </div>
-
-        <!-- Device Tab -->
-        <div id="device" class="tab-pane">
-          <div class="device-section">
-            <h3>DESKTOP</h3>
+<div id="device" hidden role="tabpanel" aria-labelledby="nav-device" tabindex="0" class="tab-pane">
+          <section class="device-section panel">
+            <h3>Desktop preferences</h3>
             <label><input id="start-on-login" type="checkbox" disabled /> Start on sign-in</label>
             <p id="start-on-login-status" class="reading-meta">Reading startup setting…</p>
             <p class="reading-meta">Closing the window keeps monitoring in the tray. Choose Quit from the tray menu to stop the app and collector.</p>
-          </div>
-          <div class="device-section">
-            <h3>DETAILS</h3>
+          </section>
+          <section class="device-section panel">
+            <h3>Dish details</h3>
             <div class="device-row">
               <span>Dish ID</span>
               <span id="dish-id">Unavailable</span>
@@ -172,16 +163,16 @@
             </div>
             <p class="reading-meta">Hover over a value for its source and observation time. Unavailable means the device did not report it.</p>
             <p id="device-capabilities" class="reading-meta">Dish diagnostics: unavailable · Router diagnostics: unavailable · Dish alerts: unavailable</p>
-          </div>
-          <div class="device-section">
-            <h3>OPTIONAL STARLINK ROUTER</h3>
+          </section>
+          <section class="device-section panel">
+            <h3>Starlink router</h3>
             <div class="device-row"><span>Router ID</span><span id="router-id">Unavailable</span></div>
             <div class="device-row"><span>Hardware</span><span id="router-hardware">Unavailable</span></div>
             <div class="device-row"><span>Software</span><span id="router-software">Unavailable</span></div>
             <p class="reading-meta">Router details are unavailable with some network setups, including bypass mode and third-party routers.</p>
-          </div>
-          <div class="device-section">
-            <h3>ALIGNMENT</h3>
+          </section>
+          <section class="device-section panel">
+            <h3>Alignment</h3>
             <div class="device-row">
               <span>Azimuth</span>
               <span id="azimuth">--</span>
@@ -194,15 +185,13 @@
               <span>Tilt</span>
               <span id="tilt">--</span>
             </div>
-          </div>
+          </section>
         </div>
-
-        <!-- Logs Tab -->
-        <div id="logs" class="tab-pane">
+<div id="logs" hidden role="tabpanel" aria-labelledby="nav-logs" tabindex="0" class="tab-pane">
           <div class="logs-container">
             <div class="logs-header">
-              <h3>BACKEND LOGS</h3>
-              <button id="clear-logs" class="clear-btn">CLEAR</button>
+              <h3>Collector logs</h3>
+              <button id="clear-logs" class="clear-btn">Clear logs</button>
             </div>
             <div id="logs-content" class="logs-content">
               <div class="log-entry">
@@ -213,9 +202,9 @@
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
-
     <script src="app.js"></script>
   </body>
 </html>

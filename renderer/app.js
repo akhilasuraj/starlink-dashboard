@@ -17,7 +17,7 @@ function createHistoryChart(canvasId, datasets, unit) {
   return new Chart(canvas.getContext("2d"), {
     type: "line",
     data: { datasets: datasets.map((dataset) => ({
-      ...dataset, data: [], spanGaps: false, pointRadius: 1, borderWidth: 2,
+      ...dataset, data: [], spanGaps: false, pointRadius: 0, pointHitRadius: 8, borderWidth: 1.5,
     })) },
     options: {
       responsive: true,
@@ -25,10 +25,10 @@ function createHistoryChart(canvasId, datasets, unit) {
       animation: false,
       parsing: false,
       scales: {
-        x: { type: "linear", ticks: { callback: (value) => new Date(value).toLocaleTimeString() } },
-        y: { beginAtZero: true, title: { display: true, text: unit } },
+        x: { type: "linear", grid: { color: "#252525" }, ticks: { color: "#a0a0a0", maxTicksLimit: 5, maxRotation: 0, callback: (value) => new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) } },
+        y: { beginAtZero: true, grid: { color: "#252525" }, ticks: { color: "#a0a0a0", maxTicksLimit: 4 }, title: { display: true, text: unit, color: "#a0a0a0" } },
       },
-      plugins: { tooltip: { callbacks: {
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: "#262626", titleColor: "#f5f5f5", bodyColor: "#dedede", padding: 12, callbacks: {
         title: (items) => items.length ? new Date(items[0].parsed.x).toLocaleString() : "",
         afterBody: (items) => items.length && items[0].raw.meta ? items[0].raw.meta : "",
       } } },
@@ -38,14 +38,14 @@ function createHistoryChart(canvasId, datasets, unit) {
 
 function initChart() {
   speedChart = createHistoryChart("speedChart", [
-    { label: "Current download traffic (Mbps)", borderColor: "#ffffff" },
-    { label: "Current upload traffic (Mbps)", borderColor: "#999999" },
+    { label: "Current download traffic (Mbps)", borderColor: "#4da6ff" },
+    { label: "Current upload traffic (Mbps)", borderColor: "#54cfac" },
   ], "Mbps");
   latencyChart = createHistoryChart("latencyChart", [
-    { label: "Latency (ms)", borderColor: "#00c853" },
+    { label: "Latency (ms)", borderColor: "#ededed" },
   ], "ms");
   lossChart = createHistoryChart("lossChart", [
-    { label: "Ping drop rate (%)", borderColor: "#ffd600" },
+    { label: "Ping drop rate (%)", borderColor: "#c4a362" },
   ], "%");
 }
 
@@ -115,8 +115,11 @@ function renderStatus(status) {
   }[collection] || "SERVICE UNKNOWN";
   const headline = byId("status");
   headline.textContent = label;
-  headline.style.color = collection !== "reachable" ? "#FFD600" :
-    service === "online" ? "#00C853" : service === "offline" ? "#D50000" : "#FFD600";
+  headline.style.color = "#f5f5f5";
+  byId("status-dot").style.backgroundColor = collection !== "reachable" ? "#c4a362" :
+    service === "online" ? "#54cfac" : service === "offline" ? "#e7786c" : "#c4a362";
+  byId("reading-time").textContent = statusProvenance
+    ? `Captured ${new Date(status.observed_at).toLocaleTimeString()}${status.stale ? " · stale" : ""}` : "No dish reading yet";
 
   byId("collection-state").textContent =
     `Collection: ${collection.replaceAll("_", " ")} · Service: ${service}` +
@@ -444,14 +447,47 @@ document.addEventListener("DOMContentLoaded", () => {
   initChart();
   document.querySelectorAll(".history-range-btn").forEach((button) =>
     button.addEventListener("click", () => setHistoryRange(button.dataset.range)));
-  document.querySelectorAll(".tab-btn").forEach((button) => button.addEventListener("click", () => {
+  const navigation = [...document.querySelectorAll(".tab-btn")];
+  const views = {
+    network: ["Overview", "Current readings and observed traffic"],
+    statistics: ["Statistics", "Connection quality over the selected window"],
+    obstruction: ["Obstructions", "Measured visibility and directional signal"],
+    device: ["Devices", "Available equipment details and desktop preferences"],
+    logs: ["Collector logs", "Local monitoring diagnostics"],
+  };
+  function selectView(button) {
     currentTab = button.dataset.tab;
-    document.querySelectorAll(".tab-btn").forEach((item) => item.classList.remove("active"));
-    document.querySelectorAll(".tab-pane").forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
-    byId(currentTab).classList.add("active");
+    navigation.forEach((item) => {
+      const selected = item === button;
+      item.classList.toggle("active", selected);
+      item.setAttribute("aria-selected", String(selected));
+      item.tabIndex = selected ? 0 : -1;
+    });
+    document.querySelectorAll(".tab-pane").forEach((pane) => {
+      const selected = pane.id === currentTab;
+      pane.classList.toggle("active", selected);
+      pane.hidden = !selected;
+    });
+    byId("view-title").textContent = views[currentTab][0];
+    byId("view-description").textContent = views[currentTab][1];
+    // A previously hidden chart must measure its newly visible parent.
+    for (const chart of [speedChart, latencyChart, lossChart]) chart?.resize?.();
     if (currentTab === "logs") updateLogs();
-  }));
+  }
+  navigation.forEach((button, index) => {
+    button.addEventListener("click", () => selectView(button));
+    button.addEventListener("keydown", (event) => {
+      let next;
+      if (["ArrowRight", "ArrowDown"].includes(event.key)) next = (index + 1) % navigation.length;
+      if (["ArrowLeft", "ArrowUp"].includes(event.key)) next = (index + navigation.length - 1) % navigation.length;
+      if (event.key === "Home") next = 0;
+      if (event.key === "End") next = navigation.length - 1;
+      if (next === undefined) return;
+      event.preventDefault();
+      navigation[next].focus();
+      selectView(navigation[next]);
+    });
+  });
   byId("clear-logs").addEventListener("click", async () => {
     await window.desktopAPI.clearLogs();
     byId("logs-content").textContent = "Logs cleared";
