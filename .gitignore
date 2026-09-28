@@ -14,7 +14,6 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
 # Electron
 dist/
@@ -49,3 +48,9 @@ starlink_tray.py
 *.swp
 *.swo
 
+
+# Workspace build tools and collector artifacts
+.tools/
+build/collector-dist/
+build/collector-work/
+build/collector-spec/

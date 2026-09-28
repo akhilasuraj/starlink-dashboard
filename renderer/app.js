@@ -1,4 +1,3 @@
-const API_URL = "http://127.0.0.1:8000";
 
 let speedChart = null;
 let latencyChart = null;
@@ -310,9 +309,7 @@ async function updateHistory(force = false) {
   lastHistoryFetchRange = requestedRange;
   lastHistoryFetchMs = now;
   try {
-    const response = await fetch(`${API_URL}/api/history?range=${requestedRange}`);
-    if (!response.ok) throw new Error(`History API: HTTP ${response.status}`);
-    const history = await response.json();
+    const history = await window.desktopAPI.getHistory(requestedRange);
     if (requestedRange === historyRange) renderHistory(history);
   } catch (error) {
     if (requestedRange === historyRange) {
@@ -357,9 +354,7 @@ function setHistoryRange(range) {
 
 async function updateData() {
   try {
-    const response = await fetch(`${API_URL}/api/status`);
-    if (!response.ok) throw new Error(`Status API: HTTP ${response.status}`);
-    renderStatus(await response.json());
+    renderStatus(await window.desktopAPI.getStatus());
   } catch (error) {
     renderStatus({ collection_state: "collector_error", service_state: "unknown", metrics: {}, device: {} });
     byId("guidance").textContent = "The desktop collector is unavailable. Check that the backend started.";
@@ -378,9 +373,7 @@ function escapeHtml(value) {
 async function updateLogs() {
   if (currentTab !== "logs") return;
   try {
-    const response = await fetch(`${API_URL}/api/logs`);
-    if (!response.ok) throw new Error(`Logs API: HTTP ${response.status}`);
-    const data = await response.json();
+    const data = await window.desktopAPI.getLogs();
     const content = byId("logs-content");
     const wasAtBottom = content.scrollHeight - content.clientHeight <= content.scrollTop + 50;
     content.innerHTML = (Array.isArray(data.logs) ? data.logs : []).map((log) =>
@@ -447,7 +440,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentTab === "logs") updateLogs();
   }));
   byId("clear-logs").addEventListener("click", async () => {
-    await fetch(`${API_URL}/api/logs/clear`, { method: "POST" });
+    await window.desktopAPI.clearLogs();
     byId("logs-content").textContent = "Logs cleared";
   });
   byId("logs-content").addEventListener("scroll", (event) => {

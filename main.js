@@ -2,6 +2,7 @@ const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } = require("electr
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
+const { randomBytes } = require("crypto");
 const APP_ID = "com.starlink.dashboard";
 
 let tray = null;
@@ -16,6 +17,21 @@ let restartDelay = 1000;
 let isQuitting = false;
 let shutdownComplete = false;
 let sessionEnding = false;
+let collectorSession = null;
+
+async function collectorRequest(route, method = "GET", timeout = 15000) {
+  const session = collectorSession;
+  if (!session || !session.port) throw new Error("Collector is starting or unavailable");
+  const response = await fetch(`http://127.0.0.1:${session.port}${route}`, {
+    method, headers: { Authorization: `Bearer ${session.token}` },
+    signal: AbortSignal.timeout(timeout),
+  });
+  if (!response.ok) throw new Error(`Collector returned ${response.status}`);
+  const body = await response.json();
+  // A response from an exited session must not replace the current live state.
+  if (session !== collectorSession) throw new Error("Collector session changed");
+  return body;
+}
 
 function setTrayHealth(state, label) {
   if (!tray || isQuitting) return;
@@ -30,9 +46,7 @@ async function updateTrayStatus() {
   if (isQuitting || statusInFlight) return;
   statusInFlight = true;
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/status", { signal: AbortSignal.timeout(1500) });
-    if (!response.ok) throw new Error(`Status API returned ${response.status}`);
-    const status = await response.json();
+    const status = await collectorRequest("/api/status", "GET", 1500);
     restartDelay = 1000;
     const collection = status && status.collection_state;
     if (collection === "dish_unreachable") {
@@ -78,18 +92,41 @@ function scheduleBackendRestart() {
 function backendStopped(child) {
   if (backendProcess !== child) return;
   backendProcess = null;
+  collectorSession = null;
   if (isQuitting && !sessionEnding) completeQuit();
   else if (!isQuitting) scheduleBackendRestart();
 }
 
 function startBackend() {
   if (isQuitting || backendProcess) return;
-  const backendDir = app.isPackaged ? path.join(process.resourcesPath, "backend") : path.join(__dirname, "backend");
   const developmentPython = path.join(__dirname, ".venv", "Scripts", "python.exe");
-  const pythonPath = !app.isPackaged && fs.existsSync(developmentPython) ? developmentPython : "python";
-  const child = spawn(pythonPath, [path.join(backendDir, "server.py")], { cwd: backendDir, windowsHide: true });
+  const executable = app.isPackaged
+    ? path.join(process.resourcesPath, "collector", "starlink-collector.exe") : developmentPython;
+  const args = app.isPackaged ? [] : ["-m", "backend.collector"];
+  const env = { ...process.env, STARLINK_DASHBOARD_SESSION_TOKEN: randomBytes(32).toString("hex") };
+  delete env.PYTHONPATH;
+  delete env.PYTHONHOME;
+  const session = { token: env.STARLINK_DASHBOARD_SESSION_TOKEN, port: null };
+  collectorSession = session;
+  const child = spawn(executable, args, { cwd: app.isPackaged ? path.dirname(executable) : __dirname,
+    env, windowsHide: true });
   backendProcess = child;
-  child.stdout.on("data", (data) => console.log(`Backend: ${data}`));
+  let output = "";
+  child.stdout.on("data", (data) => {
+    output += data.toString();
+    const lines = output.split(/\r?\n/);
+    output = lines.pop().slice(-4096);
+    for (const line of lines) {
+      try {
+        const message = JSON.parse(line);
+        if (backendProcess === child && message.event === "collector-listening" &&
+            Number.isInteger(message.port) && message.port > 0 && message.port <= 65535) {
+          session.port = message.port;
+          updateTrayStatus();
+        }
+      } catch { /* Collector stdout carries readiness messages only. */ }
+    }
+  });
   child.stderr.on("data", (data) => console.error(`Backend: ${data}`));
   child.on("error", (error) => {
     console.error(`Collector could not start: ${error.message}`);
@@ -126,6 +163,8 @@ function createWindow(show) {
     webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, "preload.js") },
   });
   mainWindow = window;
+  window.webContents.on("will-navigate", (event) => event.preventDefault());
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.loadFile(path.join(__dirname, "renderer", "index.html"));
   window.on("close", (event) => {
     if (!isQuitting) { event.preventDefault(); window.hide(); }
@@ -145,7 +184,8 @@ function createTray() {
 }
 
 function loginOptions() {
-  // Electron 28 concatenates this path into a registry command without quoting.
+  // Electron 44 normalizes surrounding quotes when writing commands; its
+  // launch-item lookup still parses the supplied path as a command line.
   return { path: `"${process.execPath}"`, args: ["--hidden"] };
 }
 
@@ -162,7 +202,8 @@ function getStartupSetting() {
 }
 
 function checkSender(event) {
-  if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error("Unknown dashboard window");
+  if (!mainWindow || event.sender !== mainWindow.webContents ||
+      event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error("Unknown dashboard window or frame");
 }
 
 function completeQuit() {
@@ -206,6 +247,18 @@ if (!app.requestSingleInstanceLock()) {
   app.on("before-quit", quitWithCollector);
   process.on("exit", () => { if (backendProcess) backendProcess.kill(); });
   ipcMain.handle("startup:get", (event) => { checkSender(event); return getStartupSetting(); });
+  ipcMain.handle("collector:status", (event) => {
+    checkSender(event); return collectorRequest("/api/status", "GET", 1500);
+  });
+  ipcMain.handle("collector:history", (event, range) => {
+    checkSender(event);
+    if (!["15m", "24h", "7d"].includes(range)) throw new Error("Unsupported history range");
+    return collectorRequest(`/api/history?range=${range}`);
+  });
+  ipcMain.handle("collector:logs", (event) => { checkSender(event); return collectorRequest("/api/logs"); });
+  ipcMain.handle("collector:clear-logs", (event) => {
+    checkSender(event); return collectorRequest("/api/logs/clear", "POST");
+  });
   ipcMain.handle("startup:set", (event, enabled) => {
     checkSender(event);
     if (typeof enabled !== "boolean" || !getStartupSetting().supported) throw new Error("Startup setting unavailable");

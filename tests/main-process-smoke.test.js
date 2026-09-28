@@ -19,7 +19,7 @@ function apiStatus(scenario) {
 
 function desktopMain(response, { lock = true, hidden = false, legacyStartup = false } = {}) {
   const windows = [], trays = [], children = [], intervals = new Map(), timeouts = new Map();
-  const handlers = new Map(), loginChanges = [], loginQueries = [];
+  const handlers = new Map(), loginChanges = [], loginQueries = [], requests = [];
   let timerId = 0, fetchError = null;
   const executable = "C:\\App\\Starlink Dashboard.exe";
   const loginRegistry = new Map(legacyStartup ? [["StarlinkDashboard", `"${executable}" --hidden`]] : []);
@@ -58,7 +58,7 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
   class Window extends EventEmitter {
     constructor(options) {
       super(); this.visible = options.show !== false; this.destroyed = false;
-      this.webContents = { openDevTools() {}, executeJavaScript: async () => {} };
+      this.webContents = Object.assign(new EventEmitter(), { mainFrame: {}, setWindowOpenHandler() {}, executeJavaScript: async () => {} });
       windows.push(this);
     }
     loadFile() {}
@@ -105,7 +105,8 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
       } };
       return require(name);
     },
-    fetch: async () => { if (fetchError) throw fetchError; return { ok: true, json: async () => response }; },
+    fetch: async (url, options) => { requests.push({ url, options });
+      if (fetchError) throw fetchError; return { ok: true, json: async () => response }; },
     setInterval(callback, delay) { const id = ++timerId; intervals.set(id, { callback, delay }); return id; },
     clearInterval(id) { intervals.delete(id); },
     setTimeout(callback, delay) { const id = ++timerId; timeouts.set(id, { callback, delay }); return id; },
@@ -113,11 +114,12 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
   });
   vm.runInContext(source, context);
   return {
-    app, windows, trays, children, intervals, timeouts, loginChanges, loginQueries, loginRegistry,
+    app, windows, trays, children, intervals, timeouts, loginChanges, loginQueries, loginRegistry, requests,
     async ready() {
       await Promise.resolve(); await Promise.resolve();
+      children.at(-1)?.stdout.emit("data", Buffer.from('{"event":"collector-listening","port":49152}\n'));
       for (const [id, timer] of [...timeouts]) if (timer.delay === 2000) { timeouts.delete(id); await timer.callback(); }
-      for (let tick = 0; tick < 4; tick += 1) await Promise.resolve();
+      for (let tick = 0; tick < 10; tick += 1) await Promise.resolve();
     },
     async poll(nextResponse = response) {
       response = nextResponse;
@@ -127,10 +129,15 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
     recoverFetch() { fetchError = null; },
     async runTimeouts() {
       for (const [id, timer] of [...timeouts]) { timeouts.delete(id); await timer.callback(); }
+      children.at(-1)?.stdout.emit("data", Buffer.from('{"event":"collector-listening","port":49153}\n'));
+      for (let tick = 0; tick < 10; tick += 1) await Promise.resolve();
     },
     async ipc(channel, value) {
       assert.ok(handlers.has(channel), `Missing ${channel} bridge`);
-      return handlers.get(channel)({ sender: windows.at(-1).webContents }, value);
+      return handlers.get(channel)({ sender: windows.at(-1).webContents, senderFrame: windows.at(-1).webContents.mainFrame }, value);
+    },
+    async foreignIpc(channel, subframe = false) {
+      return handlers.get(channel)({ sender: subframe ? windows.at(-1).webContents : {}, senderFrame: {} });
     },
   };
 }
@@ -164,6 +171,23 @@ test("tray follows observed health and recovery without spawning another collect
   assert.equal(desktop.windows.length, 2);
   assert.equal(desktop.children.length, 1);
   assert.equal(desktop.intervals.size, 1);
+});
+
+test("desktop reads through a constrained private collector session", async () => {
+  const response = apiStatus("online-idle");
+  const desktop = desktopMain(response);
+  await desktop.ready();
+  assert.deepEqual(await desktop.ipc("collector:status"), response);
+  await assert.rejects(desktop.ipc("collector:history", "all-time"), /range/i);
+  assert.equal(desktop.children[0].command, path.join("C:\\App\\resources", "collector", "starlink-collector.exe"));
+  assert.match(desktop.children[0].options.env.STARLINK_DASHBOARD_SESSION_TOKEN, /^[a-f0-9]{64}$/);
+  assert.equal(desktop.children[0].options.env.PYTHONPATH, undefined);
+  const request = desktop.requests.at(-1);
+  assert.equal(request.url, "http://127.0.0.1:49152/api/status");
+  assert.equal(request.options.headers.Authorization,
+    `Bearer ${desktop.children[0].options.env.STARLINK_DASHBOARD_SESSION_TOKEN}`);
+  await assert.rejects(desktop.foreignIpc("collector:status"), /window or frame/);
+  await assert.rejects(desktop.foreignIpc("collector:status", true), /window or frame/);
 });
 
 test("hidden sign-in launch monitors from the tray and collector exit retries once", async () => {
@@ -263,16 +287,22 @@ test("an existing legacy installer startup entry is shown and can be turned off"
   assert.equal(desktop.loginRegistry.size, 0);
 });
 
-test("preload exposes only the startup get/set bridge used by the installed app", async () => {
-  let bridge;
+test("preload exposes finite desktop methods without an endpoint or session secret", async () => {
+  const bridges = {};
   const calls = [];
   vm.runInNewContext(fs.readFileSync(path.join(root, "preload.js"), "utf8"), {
     require: () => ({
-      contextBridge: { exposeInMainWorld(name, value) { assert.equal(name, "desktopSettings"); bridge = value; } },
+      contextBridge: { exposeInMainWorld(name, value) { bridges[name] = value; } },
       ipcRenderer: { invoke: async (...args) => { calls.push(args); return { supported: true, enabled: false }; } },
     }),
   });
-  await bridge.getStartOnLogin();
-  await bridge.setStartOnLogin(true);
-  assert.deepEqual(calls, [["startup:get"], ["startup:set", true]]);
+  await bridges.desktopSettings.getStartOnLogin();
+  await bridges.desktopSettings.setStartOnLogin(true);
+  await bridges.desktopAPI.getStatus();
+  await bridges.desktopAPI.getHistory("7d");
+  await bridges.desktopAPI.getLogs();
+  await bridges.desktopAPI.clearLogs();
+  assert.deepEqual(calls, [["startup:get"], ["startup:set", true], ["collector:status"],
+    ["collector:history", "7d"], ["collector:logs"], ["collector:clear-logs"]]);
+  assert.deepEqual(Object.keys(bridges.desktopAPI).sort(), ["clearLogs", "getHistory", "getLogs", "getStatus"]);
 });

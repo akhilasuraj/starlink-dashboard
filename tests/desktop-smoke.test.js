@@ -83,17 +83,14 @@ function desktop(response, history = { samples: [] }, withCharts = false, domRea
   };
   const context = vm.createContext({
     document,
-    window: { desktopSettings: settingsBridge },
+    window: { desktopSettings: settingsBridge, desktopAPI: {
+      getStatus: async () => { requests.push("/api/status"); return response; },
+      getHistory: async (range) => { requests.push(`/api/history?range=${range}`);
+        return history.byRange ? history.byRange[range] : history; },
+      getLogs: async () => ({ logs: [] }),
+      clearLogs: async () => ({ status: "ok" }),
+    } },
     console: { error() {} },
-    fetch: async (url) => ({
-      ok: true,
-      json: async () => {
-        requests.push(url);
-        if (url.endsWith("/api/status")) return response;
-        if (history.byRange) return history.byRange[new URL(url).searchParams.get("range")];
-        return history;
-      },
-    }),
     Chart: withCharts ? class {
       constructor(_context, configuration) {
         this.data = configuration.data;

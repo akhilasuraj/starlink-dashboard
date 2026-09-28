@@ -6,10 +6,12 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import logging
 import math
+import os
+import secrets
 from typing import Literal
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 try:
     from backend.history import HistoryStore, STATUS_SOURCE, default_history_path, finite_number as number, utc_text
@@ -401,15 +403,18 @@ async def lifespan(app: FastAPI):
         app.state.collector.telemetry.close()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.state.collector = Collector(StarlinkTelemetry())
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.state.session_token = os.environ.get("STARLINK_DASHBOARD_SESSION_TOKEN")
+
+
+@app.middleware("http")
+async def authenticate_desktop(request, call_next):
+    token = app.state.session_token
+    supplied = request.headers.get("authorization", "")
+    if not token or not secrets.compare_digest(supplied.encode("utf-8"), f"Bearer {token}".encode("utf-8")):
+        return JSONResponse({"detail": "Desktop session required"}, status_code=401)
+    return await call_next(request)
 
 
 @app.get("/api/status")
@@ -439,5 +444,5 @@ async def health():
 
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+    from backend.collector import run
+    run()

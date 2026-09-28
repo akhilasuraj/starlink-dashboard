@@ -1,81 +1,27 @@
-# Troubleshooting Guide
+# Troubleshooting
 
-## "Starlink is Disconnected" Error
+## Dish unreachable
 
-If you see "Starlink is disconnected" after installing, here's what to check:
+Check that the PC is on the Starlink LAN and the dish is powered. Local dish telemetry uses `192.168.100.1:9200`. With bypass mode or a third-party router, configure a static route to `192.168.100.1` through the Starlink WAN interface. An unreachable dish means service state is unknown; it does not confirm an outage.
 
-### 1. **Install Python Dependencies** (Most Common Issue)
+## Collector unavailable
 
-After installation, you need to install Python dependencies:
+The installed app includes its own Python runtime. Do not install Python or run pip to repair it. The app retries an exited collector automatically. Open the **Logs** tab for reported collection problems. If it remains unavailable, use **Quit** in the tray, relaunch, or reinstall the complete installer. Check whether antivirus quarantined `resources\collector\starlink-collector.exe` or files in its `_internal` folder.
 
-**Option A: During Installation**
+The collector API is private to the running app. A fixed `localhost:8000` URL and manually launching `server.py` are not supported. A browser request without the app's session secret is rejected.
 
-- When prompted, click "Yes" to install Python dependencies
+## Stale or missing readings
 
-**Option B: After Installation**
+A stale value retains its last observation time and source. It does not represent the current service state. Unsupported telemetry says unavailable. Optional router diagnostics can fail while dish monitoring still works. No data before collection began is displayed as healthy service.
 
-- Navigate to your installation folder (e.g., `C:\Program Files\Starlink Dashboard\`)
-- Run `setup-python-deps.bat`
-- Or manually run: `pip install -r resources\requirements.txt`
+History is stored in `%LOCALAPPDATA%\Starlink Dashboard\history.sqlite3`. Keep that folder writable. For isolated development/testing, `STARLINK_DASHBOARD_DATA_DIR` selects a separate data folder. Do not delete history to diagnose a transient collection failure.
 
-### 2. **Check Python Installation**
+## Startup and closing
 
-Open Command Prompt and run:
+Closing the window hides it in the tray. **Quit** exits and stops the collector. A second app launch opens the existing window. Enable or disable **Start on sign-in** under **Device**; the installer does not enable it automatically.
 
-```cmd
-python --version
-```
+## Build failures
 
-You should see Python 3.7 or later. If not:
+Use Windows x64, Python 3.12, and Node.js 24. Create the project virtual environment and install the pinned build requirements, then run `npm ci` and `npm run install:runtime`. Build-time downloads need network; installing the resulting artifact does not. Run `npm run build:win` to build the collector before packaging. A missing collector bundle is a build error.
 
-- Download Python from https://www.python.org/downloads/
-- **Important**: Check "Add Python to PATH" during installation
-- Restart your computer after installing Python
-
-### 3. **Check Starlink Connection**
-
-- Ensure your computer is connected to the Starlink network
-- The Starlink router should be accessible at `192.168.100.1`
-- Try opening http://192.168.100.1 in your browser to verify
-
-### 4. **View Backend Logs**
-
-To see what's happening with the Python backend:
-
-1. Close the Starlink Dashboard app
-2. Open Command Prompt
-3. Navigate to installation folder: `cd "C:\Program Files\Starlink Dashboard\resources\backend"`
-4. Run manually: `python server.py`
-5. Look for any error messages
-
-Common errors:
-
-- `ModuleNotFoundError`: Python dependencies not installed (see step 1)
-- `Connection refused`: Not connected to Starlink network
-- `python: command not found`: Python not installed or not in PATH
-
-### 5. **Reinstall the Application**
-
-If all else fails:
-
-1. Uninstall Starlink Dashboard
-2. Make sure Python 3.7+ is installed and in PATH
-3. Reinstall using the latest installer
-4. Say "Yes" when prompted to install Python dependencies
-
-## Quick Test
-
-Open PowerShell and run:
-
-```powershell
-python -c "import starlink_client; print('Dependencies OK')"
-```
-
-If you see "Dependencies OK", the Python setup is correct.
-
-## Need More Help?
-
-Check the application logs:
-
-- Windows: Press `Ctrl+Shift+I` in the dashboard to open DevTools
-- Look at the Console tab for error messages
+Report failures with the app version, collection state, relevant log text, and whether the PC uses a Starlink router or bypass mode. Do not share desktop session secrets.

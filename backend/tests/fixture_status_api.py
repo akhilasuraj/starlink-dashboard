@@ -184,8 +184,9 @@ def main(scenario, endpoint="status", range_name="15m"):
             clock[0] += timedelta(minutes=14, seconds=58)
         if scenario == "stale":
             clock[0] += timedelta(seconds=10)
+        app.state.session_token = "fixture-session-token"
         params = {"range": range_name} if endpoint == "history" else None
-        response = TestClient(app).get(f"/api/{endpoint}", params=params)
+        response = TestClient(app, headers={"Authorization": "Bearer fixture-session-token"}).get(f"/api/{endpoint}", params=params)
         response.raise_for_status()
         print(json.dumps(response.json()))
 

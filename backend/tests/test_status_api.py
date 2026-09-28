@@ -54,7 +54,8 @@ class StatusApiTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.client = TestClient(app)
+        app.state.session_token = "fixture-session-token"
+        self.client = TestClient(app, headers={"Authorization": "Bearer fixture-session-token"})
         self.clock = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
 
     def fixture(self, name):

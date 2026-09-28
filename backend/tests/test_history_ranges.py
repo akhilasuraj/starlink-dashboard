@@ -24,7 +24,8 @@ class HistoryRangeApiTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.store = HistoryStore(Path(temporary.name) / "history.sqlite3")
         app.state.collector = Collector(NoTransport(), now=lambda: NOW, history_store=self.store)
-        self.client = TestClient(app)
+        app.state.session_token = "fixture-session-token"
+        self.client = TestClient(app, headers={"Authorization": "Bearer fixture-session-token"})
 
     def history(self, range_name):
         response = self.client.get("/api/history", params={"range": range_name})

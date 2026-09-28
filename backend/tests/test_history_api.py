@@ -54,7 +54,8 @@ class HistoryApiTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.db = Path(self.temp.name) / "history.sqlite3"
         self.clock = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
-        self.client = TestClient(app)
+        app.state.session_token = "fixture-session-token"
+        self.client = TestClient(app, headers={"Authorization": "Bearer fixture-session-token"})
 
     def collector(self, statuses, histories, db=None):
         collector = Collector(
