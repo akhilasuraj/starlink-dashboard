@@ -21,6 +21,7 @@ let sessionEnding = false;
 let collectorSession = null;
 let updateController = null;
 let installUpdateRequested = false;
+let cancelPendingUpdateQuit = false;
 
 async function collectorRequest(route, method = "GET", timeout = 15000) {
   const session = collectorSession;
@@ -238,6 +239,12 @@ function stopForSessionEnd() {
 }
 
 function quitWithCollector(event) {
+  // An async launch error can arrive before the updater's already queued quit.
+  if (cancelPendingUpdateQuit && !sessionEnding) {
+    cancelPendingUpdateQuit = false;
+    event.preventDefault();
+    return;
+  }
   if (shutdownComplete) return;
   event.preventDefault();
   if (isQuitting) return;
@@ -304,8 +311,14 @@ if (!app.requestSingleInstanceLock()) {
       version: app.getVersion(),
       timers: { setTimeout, clearTimeout, setInterval, clearInterval },
       onInstallRequested: () => { installUpdateRequested = true; app.quit(); },
-      onInstallFailed: () => {
+      onInstallFailed: (cancelPendingQuit) => {
         if (!installUpdateRequested || sessionEnding) return;
+        if (cancelPendingQuit) {
+          cancelPendingUpdateQuit = true;
+          // The pinned updater queued its immediate before emitting this error.
+          // Scope the veto to that turn; later user quits remain normal.
+          setImmediate(() => { cancelPendingUpdateQuit = false; });
+        }
         installUpdateRequested = shutdownComplete = isQuitting = false;
         startBackend();
         statusTimer = setInterval(updateTrayStatus, 2000);

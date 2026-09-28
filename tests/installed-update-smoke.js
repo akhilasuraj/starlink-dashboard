@@ -63,7 +63,7 @@ async function smoke() {
     return JSON.parse(ps(`$run='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; ` +
       `$approved='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run'; ` +
       `$command=Get-ItemPropertyValue -LiteralPath $run -Name 'com.starlink.dashboard'; ` +
-      `$approval=Get-ItemPropertyValue -LiteralPath $approved -Name 'com.starlink.dashboard' -ErrorAction SilentlyContinue; ` +
+      `$approval=(Get-ItemProperty -LiteralPath $approved -ErrorAction SilentlyContinue).'com.starlink.dashboard'; ` +
       `[pscustomobject]@{command=$command;approval=$approval} | ConvertTo-Json -Compress`));
   }
   const ownedPids = new Set();

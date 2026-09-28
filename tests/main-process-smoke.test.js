@@ -96,7 +96,7 @@ function desktopMain(response, { lock = true, hidden = false, legacyStartup = fa
   class ClockDate extends Date { static now() { return Date.parse("2026-09-27T12:00:00Z"); } }
   const context = vm.createContext({
     __dirname: root, process: fakeProcess, console: { log() {}, error() {} }, Date: ClockDate,
-    AbortSignal, Buffer,
+    AbortSignal, Buffer, setImmediate,
     require(name) {
       if (name === "./updater") return require("../updater");
       if (name === "electron-updater") return { autoUpdater: updater };
@@ -369,4 +369,43 @@ test("ordinary quit/logoff does not install a downloaded update; launch failure 
   assert.equal(desktop.loginChanges.length, 0);
   desktop.app.quit();
   assert.equal(desktop.app.quitCount, 1);
+});
+
+
+test("asynchronous NSIS launch failure cancels the queued quit and permits a real updater retry", async () => {
+  const { BaseUpdater } = require("electron-updater/out/BaseUpdater");
+  const { NsisUpdater } = require("electron-updater/out/NsisUpdater");
+  const electronPath = require.resolve("electron");
+  require("electron");
+  const originalElectron = require.cache[electronPath].exports;
+  require.cache[electronPath].exports = { autoUpdater: new EventEmitter() };
+  try {
+    const desktop = desktopMain(apiStatus("online-idle")); await desktop.ready();
+    const updater = desktop.updater;
+    let launches = 0;
+    Object.assign(updater, {
+      app: desktop.app, _logger: { info() {}, warn() {} }, quitAndInstallCalled: false,
+      installerPath: "fixture-never-executed.exe", downloadedUpdateHelper: { downloadedFileInfo: {} },
+      quitAndInstall: BaseUpdater.prototype.quitAndInstall,
+      install: BaseUpdater.prototype.install, doInstall: NsisUpdater.prototype.doInstall,
+      dispatchError(error) { this.emit("error", error); },
+      spawnLog: async () => { launches++; throw Object.assign(new Error("fixture EIO"), { code: "EIO" }); },
+    });
+    await desktop.ipc("updates:check"); await desktop.ipc("updates:download");
+    await desktop.ipc("updates:install");
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(desktop.app.quitCount, 0, "Queued updater quit stopped recovered monitoring");
+    assert.equal((await desktop.ipc("updates:get")).phase, "error");
+    assert.equal(desktop.children.length, 2); assert.equal(desktop.children[1].killCount, 0);
+    assert.equal([...desktop.intervals.values()].filter(timer => timer.delay === 2000).length, 1);
+    assert.equal(updater.quitAndInstallCalled, false, "Failed attempt still blocks retry");
+    updater.spawnLog = async () => { launches++; return true; };
+    await desktop.ipc("updates:check"); await desktop.ipc("updates:download");
+    await desktop.ipc("updates:install");
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(launches, 2); assert.equal(desktop.app.quitCount, 1);
+    assert.equal(desktop.children[1].killCount, 1); assert.equal(desktop.children.length, 2);
+    assert.equal(desktop.intervals.size, 0);
+  } finally { require.cache[electronPath].exports = originalElectron; }
 });

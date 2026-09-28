@@ -13,7 +13,7 @@ Installed Windows copies discover and install newer GitHub release installers wi
 3. **Download update** downloads the installer and shows progress. Monitoring continues.
 4. **Restart and install** stops the owned collector, waits for its exit, then launches the installer. The normal NSIS wizard may appear. After installation the app starts again.
 
-Downloads and restarts require separate explicit actions. Closing to tray, normal Quit, and Windows logoff never install an update. Check/download failures leave monitoring available and can be retried. An installer launch error detected before process exit restores monitoring. No updater is active in development or on unsupported platforms.
+Downloads and restarts require separate explicit actions. Closing to tray, normal Quit, and Windows logoff never install an update. Check/download failures leave monitoring available and can be retried. Synchronous launch errors and asynchronous errors arriving before the updater’s queued quit restore monitoring and permit retry. An error after the process has exited requires reopening the app. No updater is active in development or on unsupported platforms.
 
 The current repository publishes GitHub prereleases with ordinary version tags. This first implementation explicitly includes those prereleases and explains that policy in Devices. Downgrades are disabled. Publish increasing versions: the pinned GitHub provider uses release feed order rather than finding the greatest semantic version.
 
@@ -21,7 +21,7 @@ The current repository publishes GitHub prereleases with ordinary version tags. 
 
 `updater.js` owns discovery/download state and sanitized snapshots. `main.js` owns shutdown and installation ordering. `preload.js` exposes only `getState`, `check`, `download`, and `install`; validated IPC admits only the main window/main frame. The renderer cannot provide a feed, URL, file path or executable. `renderer/updates.js` renders snapshots and explicit actions. Polling snapshots every two seconds is local IPC, not repeated GitHub requests.
 
-The production feed is fixed to `akhilasuraj/starlink-dashboard`. Pinned `electron-updater@6.8.9` handles NSIS downloads and SHA-512 verification. `autoDownload` and `autoInstallOnAppQuit` are disabled. Installer invocation happens only after collector close, including the existing forced-shutdown escalation. Collection restart and health timers stop during shutdown. Session ending takes precedence over update installation.
+The production feed is fixed to `akhilasuraj/starlink-dashboard`. Pinned `electron-updater@6.8.9` handles NSIS downloads and SHA-512 verification. `autoDownload` and `autoInstallOnAppQuit` are disabled. Installer invocation happens only after collector close, including the existing forced-shutdown escalation. Collection restart and health timers stop during shutdown. Recovery vetoes only the pinned updater’s pending quit and resets its failed-install guard; a regression executes the actual pinned NSIS/base methods with a rejected spawn promise. Session ending takes precedence over update installation.
 
 ## Release contract
 

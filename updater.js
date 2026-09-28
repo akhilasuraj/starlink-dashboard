@@ -9,6 +9,7 @@ function createUpdateController({ updater, version, onInstallRequested, onInstal
       ? "Updates are checked automatically. Prerelease versions are included."
       : "Updates are available in the installed Windows app." };
   let startupTimer = null, checkTimer = null;
+  let installInvocationReturned = false;
   const snapshot = () => ({ ...state });
   const change = (phase, message, extra = {}) => { state = { ...state, phase, message, ...extra }; };
   function fail() {
@@ -17,7 +18,12 @@ function createUpdateController({ updater, version, onInstallRequested, onInstal
     change("error", installing ? "Could not start the update installer. Monitoring has resumed; try again."
       : downloading ? "Download failed. Keep using the app and check again to retry."
       : "Could not check for updates. Keep using the app and try again later.", { percent: null });
-    if (installing) onInstallFailed();
+    if (installing) {
+      // Pinned 6.8.9 retains this guard after an asynchronous NSIS spawn error.
+      // Reset it only for a failed attempt so the explicit retry can launch.
+      if ("quitAndInstallCalled" in updater) updater.quitAndInstallCalled = false;
+      onInstallFailed(installInvocationReturned);
+    }
   }
   if (updater) {
     updater.autoDownload = false;
@@ -66,7 +72,11 @@ function createUpdateController({ updater, version, onInstallRequested, onInstal
   // Called by the main process only after its collector has exited.
   function installAfterCollectorStopped() {
     if (!updater || state.phase !== "installing") return;
-    try { updater.quitAndInstall(false, true); } catch { fail(); }
+    installInvocationReturned = false;
+    try {
+      updater.quitAndInstall(false, true);
+      installInvocationReturned = true;
+    } catch { fail(); }
   }
   function stop() {
     if (startupTimer !== null) timers.clearTimeout(startupTimer);
