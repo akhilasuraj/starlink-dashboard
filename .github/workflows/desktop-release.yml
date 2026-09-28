@@ -14,7 +14,11 @@ on:
         type: string
         default: ''
       acknowledge_limitations:
-        description: I reviewed and accept every recorded hardware limitation (publishes a prerelease)
+        description: I reviewed and accept every recorded hardware limitation
+        type: boolean
+        default: false
+      stable_release:
+        description: Publish stable latest using the version-bound owner approval record
         type: boolean
         default: false
 
@@ -137,6 +141,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
           ACKNOWLEDGE_LIMITATIONS: ${{ inputs.acknowledge_limitations }}
+          STABLE_RELEASE: ${{ inputs.stable_release }}
         run: |
           if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$') { throw 'Invalid version tag' }
           $version = (Get-Content package.json | ConvertFrom-Json).version
@@ -155,6 +160,7 @@ jobs:
             '--update-smoke', 'release-artifact/dist/validation/installed-update.json',
             '--notes-output', 'release-artifact/release-notes.md')
           if ($env:ACKNOWLEDGE_LIMITATIONS -eq 'true') { $arguments += '--acknowledge-limitations' }
+          if ($env:STABLE_RELEASE -eq 'true') { $arguments += @('--stable-release', '--release-approval', 'docs/release-approval.json') }
           $decision = & node @arguments
           if ($LASTEXITCODE -ne 0) { throw 'Release evidence gate failed' }
           $decision | Set-Content release-artifact/gate-decision.json
@@ -168,9 +174,12 @@ jobs:
           $arguments = @('release', 'create', $env:RELEASE_TAG,
             $installer, "$installer.blockmap", 'release-artifact/dist/latest.yml', '--verify-tag', '--draft',
             '--title', "Starlink Dashboard $env:RELEASE_TAG", '--notes-file', 'release-artifact/release-notes.md')
-          if ((Get-Content release-artifact/gate-decision.json | ConvertFrom-Json).prerelease) { $arguments += '--prerelease' }
+          $decision = Get-Content release-artifact/gate-decision.json | ConvertFrom-Json
+          if ($decision.prerelease) { $arguments += '--prerelease' }
           & gh @arguments
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Expose the release only after all updater assets are uploaded.
-          & gh release edit $env:RELEASE_TAG --draft=false
+          $editArguments = @('release', 'edit', $env:RELEASE_TAG, '--draft=false')
+          if (-not $decision.prerelease) { $editArguments += '--latest' }
+          & gh @editArguments
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

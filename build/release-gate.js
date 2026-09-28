@@ -57,10 +57,24 @@ try {
     "Owner hardware acceptance or explicit limitations acknowledgment required");
   requireEvidence(hardware.limitations.length === 0 || acknowledged,
     "Hardware limitations must be explicitly acknowledged");
-  const prerelease = incomplete || hardware.limitations.length > 0;
+  const stableRequested = process.argv.includes("--stable-release");
+  if (stableRequested) {
+    const approvalPath = option("--release-approval");
+    requireEvidence(approvalPath, "Stable release requires a version-bound owner approval record");
+    const approval = JSON.parse(fs.readFileSync(approvalPath));
+    requireEvidence(approval.schema_version === 1 && approval.version === version &&
+      /^[0-9]+\.[0-9]+\.[0-9]+$/.test(version) && approval.channel === "stable" &&
+      approval.owner_authorized === true && approval.limitations_acknowledged === true &&
+      typeof approval.authorization_basis === "string" && approval.authorization_basis.trim().length > 0 &&
+      typeof approval.limitations_basis === "string" && approval.limitations_basis.trim().length > 0,
+    "Stable release owner approval must match this version and acknowledge recorded limitations");
+    requireEvidence(hardware.owner_acceptance === "accepted",
+      "Stable release requires the existing hardware record to be owner-accepted");
+  }
+  const prerelease = !stableRequested && (incomplete || hardware.limitations.length > 0);
   validateUpdateMetadata({ metadataPath: option("--update-metadata"), installerPath: option("--installer"),
     blockmapPath: option("--blockmap"), version });
-  const decision = { allowed: true, prerelease, limitations: hardware.limitations };
+  const decision = { allowed: true, prerelease, stable_owner_approved: stableRequested, limitations: hardware.limitations };
   if (option("--notes-output")) fs.writeFileSync(option("--notes-output"),
     `# Starlink Dashboard\n\nBundled Windows x64 installer; no separate Python installation. Start on sign-in is opt-in.\n\n` +
     `Offline installer and installed desktop verified for commit ${offline.tested_sha}.\n\n` +
@@ -68,6 +82,7 @@ try {
     `Version 1.2.0 and earlier require one manual installation of this updater-enabled release. Their historical uninstaller may clear an enabled start-on-sign-in setting; re-enable it after that bootstrap installation if needed.\n\n` +
     `The app checks for newer releases, including prereleases, and asks before downloading and restarting to install. Windows builds remain unsigned: SHA512 verifies downloaded bytes against the feed, not publisher authenticity.\n\n` +
     `Live hardware observed ${hardware.observed_at}: ${hardware.dish.hardware}, firmware ${hardware.dish.firmware}.\n\n` +
+    (stableRequested ? `Published as the stable latest release at the owner's explicit request for version ${version}. The historical hardware record remains partial; release classification does not expand its validation scope.\n\n` : "") +
     (hardware.limitations.length ? `## Acknowledged limitations\n\n${hardware.limitations.map((item) => `- ${item}`).join("\n")}\n` : "Owner hardware validation accepted.\n"));
   console.log(JSON.stringify(decision));
 } catch (error) { console.error(`Release blocked: ${error.message}`); process.exitCode = 1; }

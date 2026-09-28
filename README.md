@@ -48,3 +48,5 @@ npm run test:update-metadata
 The app packaging smoke uses a temporary data directory, strips Python environment entries, enables a local inspector only for the check, verifies the actual window/preload/chart library, duplicate-launch handling, and collector cleanup. It reads startup settings but never changes them.
 
 The single [desktop workflow](.github/workflows/desktop-release.yml) runs behavioral tests, builds, packaging smokes, and offline installation on a disposable hosted Windows runner. Local builds never publish. Publication requires a separate manual request, the exact offline-tested installer bytes, and accepted live hardware evidence or explicit acknowledgment of its limitations. See [release verification](docs/release-verification.md).
+
+The owner requested **1.3.0 as the latest stable release**. Its version-bound approval retains the documented historical hardware limits; stable classification does not imply a new live dish validation. Future releases require their own approval to use this exception.

@@ -15,7 +15,7 @@ Installed Windows copies discover and install newer GitHub release installers wi
 
 Downloads and restarts require separate explicit actions. Closing to tray, normal Quit, and Windows logoff never install an update. Check/download failures leave monitoring available and can be retried. Synchronous launch errors and asynchronous errors arriving before the updater’s queued quit restore monitoring and permit retry. An error after the process has exited requires reopening the app. No updater is active in development or on unsupported platforms.
 
-The current repository publishes GitHub prereleases with ordinary version tags. This first implementation explicitly includes those prereleases and explains that policy in Devices. Downgrades are disabled. Publish increasing versions: the pinned GitHub provider uses release feed order rather than finding the greatest semantic version.
+The owner requested 1.3.0 as the latest stable release. The updater also includes GitHub prereleases with ordinary version tags and explains that policy in Devices. Downgrades are disabled. Publish increasing versions: the pinned GitHub provider uses release feed order rather than finding the greatest semantic version.
 
 ## Runtime ownership
 
@@ -26,6 +26,8 @@ The production feed is fixed to `akhilasuraj/starlink-dashboard`. Pinned `electr
 ## Release contract
 
 Builder embeds GitHub configuration and emits the canonical `Starlink.Dashboard.Setup.<version>.exe`, `latest.yml`, and `.exe.blockmap`. The gate verifies metadata version, filename, byte length and SHA-512 against the exact offline-tested installer, rejects web-installer metadata and multiple packages, and requires a nonempty matching blockmap. Draft-release publication uploads all three before exposing the release. Local builds never publish.
+
+Stable publication of 1.3.0 requires both the explicit workflow choice and [the owner approval record](release-approval.json), matched to the package version. Hardware limitations remain acknowledged and included in release notes; the record stays partial. This approval does not bypass offline installation, installed-upgrade evidence, metadata validation or installer hashes. The default remains prerelease publication when hardware validation has limits.
 
 The workflow also verifies a two-version installed transition on a disposable hosted Windows runner. Its lower-version bootstrap is built from this updater-enabled source; it does not pretend historical 1.2.0 has an updater. Test-only inspector configuration substitutes a loopback feed. The unattended test adapts installer invocation to silent mode after asserting production requests the interactive installer. The interactive wizard remains a manual release check. The gate binds upgrade evidence to the commit, run and tested target installer.
 

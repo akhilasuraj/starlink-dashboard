@@ -48,6 +48,34 @@ test("release gate refuses incomplete offline evidence and unacknowledged hardwa
       tested_sha: "abc123", run_id: "123", installer_sha256: crypto.createHash("sha256").update("fixture installer bytes").digest("hex") }));
     assert.notEqual(run().status, 0);
     assert.equal(run("--acknowledge-limitations").status, 0);
+    const approval = path.join(directory, "release-approval.json");
+    const approvedHardware = JSON.parse(fs.readFileSync(hardware));
+    approvedHardware.owner_acceptance = "accepted";
+    fs.writeFileSync(hardware, JSON.stringify(approvedHardware));
+    const stable = (...extra) => run("--acknowledge-limitations", "--stable-release", ...extra);
+    assert.notEqual(stable().status, 0, "Stable release accepted without approval");
+    assert.notEqual(stable("--release-approval", approval).status, 0, "Absent approval accepted");
+    const validApproval = { schema_version: 1, version, channel: "stable", owner_authorized: true,
+      limitations_acknowledged: true, authorization_basis: "Owner explicitly requested latest stable",
+      limitations_basis: "Owner accepted historical limitations" };
+    for (const [property, value] of Object.entries({ schema_version: 2, version: "0.0.0", channel: "prerelease",
+      owner_authorized: false, limitations_acknowledged: false, authorization_basis: " ", limitations_basis: "" })) {
+      fs.writeFileSync(approval, JSON.stringify({ ...validApproval, [property]: value }));
+      assert.notEqual(stable("--release-approval", approval).status, 0, `Invalid stable approval ${property} accepted`);
+    }
+    fs.writeFileSync(approval, JSON.stringify(validApproval));
+    assert.notEqual(run("--stable-release", "--release-approval", approval).status, 0,
+      "Stable approval bypassed the explicit limitations input");
+    const stableResult = stable("--release-approval", approval);
+    assert.equal(stableResult.status, 0, stableResult.stderr);
+    assert.equal(JSON.parse(stableResult.stdout).prerelease, false);
+    assert.equal(JSON.parse(stableResult.stdout).stable_owner_approved, true);
+    assert.deepEqual(JSON.parse(stableResult.stdout).limitations, approvedHardware.limitations);
+    assert.equal(JSON.parse(run("--acknowledge-limitations").stdout).prerelease, true,
+      "Approval changed the default prerelease policy");
+    approvedHardware.owner_acceptance = "pending";
+    fs.writeFileSync(hardware, JSON.stringify(approvedHardware));
+    assert.notEqual(stable("--release-approval", approval).status, 0, "Stable release accepted pending hardware acceptance");
     const validUpgrade = JSON.parse(fs.readFileSync(upgrade));
     for (const [property, value] of Object.entries({ passed: false, tested_sha: "other", run_id: "456",
       from_version: version, to_version: "0.0.0", installer_sha256: "0".repeat(64), metadata_sha256: "0".repeat(64),
@@ -84,7 +112,7 @@ test("offline installer runner refuses ordinary local execution before installin
   assert.match(result.stderr, /disposable GitHub-hosted Windows runner/i);
 });
 
-test("partial or unaccepted hardware needs explicit limitations and can never publish stable", () => {
+test("default release policy keeps partial or unaccepted hardware prerelease with explicit limitations", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "starlink-hardware-gate-"));
   try {
     const hardware = path.join(directory, "hardware.json"), offline = path.join(directory, "offline.json");
