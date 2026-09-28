@@ -1,0 +1,149 @@
+name: Desktop verification and release
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish an existing version tag after all checks and owner review
+        type: boolean
+        default: false
+      release_tag:
+        description: Existing tag matching this commit and package version (for example v1.1.0)
+        type: string
+        default: ''
+      acknowledge_limitations:
+        description: I reviewed and accept every recorded hardware limitation (publishes a prerelease)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.19.0'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12.14'
+          architecture: x64
+      - name: Install pinned build and test dependencies
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm install --global npm@12.1.0
+          npm ci --no-audit --no-fund
+          npm run install:runtime
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt -r requirements-test.txt
+          .\.venv\Scripts\python.exe -m pip check
+      - name: Fixture API, renderer, main-process, and gate behavior
+        run: |
+          .\.venv\Scripts\python.exe -m unittest discover -s backend/tests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm test
+      - name: Build the self-contained installer (never publishes)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build:win
+      - name: Bundled collector and packaged desktop smoke (sequential)
+        run: |
+          npm run test:collector-package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:app-package
+      - name: Offline installed-artifact verification on this disposable runner
+        env:
+          STARLINK_DISPOSABLE_INSTALL_SMOKE: '1'
+        run: |
+          New-Item -ItemType Directory -Force dist/validation | Out-Null
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $installer = Join-Path (Get-Location) "dist/Starlink Dashboard Setup $version.exe"
+          $node = (Get-Command node).Source
+          ./build/offline-install-smoke.ps1 -InstallerPath $installer -NodePath $node -ReportPath dist/validation/offline-install.json
+      - name: Upload tested artifact and verification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tested-desktop-${{ github.sha }}
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/validation/offline-install.json
+            docs/hardware-validation.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-failure-${{ github.sha }}
+          path: |
+            dist/validation/
+            dist/builder-debug.yml
+          if-no-files-found: warn
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+    needs: verify
+    runs-on: windows-2022
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.19.0'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tested-desktop-${{ github.sha }}
+          path: release-artifact
+      - name: Validate tag, tested bytes, and hardware acceptance
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ACKNOWLEDGE_LIMITATIONS: ${{ inputs.acknowledge_limitations }}
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$') { throw 'Invalid version tag' }
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          if ($env:RELEASE_TAG -ne "v$version") { throw 'Tag/package version mismatch' }
+          $tagCommit = git rev-parse --verify "refs/tags/$($env:RELEASE_TAG)^{commit}"
+          if ($LASTEXITCODE -ne 0 -or $tagCommit -ne $env:GITHUB_SHA) { throw 'Tag must already point to the tested commit' }
+          $installer = "release-artifact/dist/Starlink Dashboard Setup $version.exe"
+          $arguments = @('build/release-gate.js', '--hardware', 'docs/hardware-validation.json',
+            '--offline', 'release-artifact/dist/validation/offline-install.json', '--installer', $installer,
+            '--expected-sha', $env:GITHUB_SHA, '--expected-run', $env:GITHUB_RUN_ID,
+            '--notes-output', 'release-artifact/release-notes.md')
+          if ($env:ACKNOWLEDGE_LIMITATIONS -eq 'true') { $arguments += '--acknowledge-limitations' }
+          $decision = & node @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Release evidence gate failed' }
+          $decision | Set-Content release-artifact/gate-decision.json
+      - name: Publish only the tested installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $arguments = @('release', 'create', $env:RELEASE_TAG,
+            "release-artifact/dist/Starlink Dashboard Setup $version.exe", '--verify-tag',
+            '--title', "Starlink Dashboard $env:RELEASE_TAG", '--notes-file', 'release-artifact/release-notes.md')
+          if ((Get-Content release-artifact/gate-decision.json | ConvertFrom-Json).prerelease) { $arguments += '--prerelease' }
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

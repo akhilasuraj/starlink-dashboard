@@ -12,6 +12,8 @@ The tray distinguishes online, reported impairment, reported offline service, di
 
 Switch between 15-minute, 24-hour, and 7-day observed history. Missing collection time remains a gap. Longer views show observed coverage, and device fields that are absent or old say unavailable or stale. History remains in `%LOCALAPPDATA%\Starlink Dashboard\history.sqlite3` across app restarts. Router details are optional. Obstruction directional samples show reported signal context; there is no desktop camera scan.
 
+Quality shows **Observed ping success** for the selected window, with valid sample count and observed span. It averages valid ping-loss fractions, weights longer-view buckets by sample count, and excludes uncollected time. Dish uptime measures time since reboot; the percentage does not establish continuous service uptime.
+
 With bypass mode or a third-party router, a route to dish address `192.168.100.1` through the Starlink WAN interface may be needed. See [troubleshooting](TROUBLESHOOTING.md).
 
 ## Development
@@ -42,4 +44,4 @@ npm run test:app-package
 
 The app packaging smoke uses a temporary data directory, strips Python environment entries, enables a local inspector only for the check, verifies the actual window/preload/chart library, duplicate-launch handling, and collector cleanup. It reads startup settings but never changes them.
 
-Clean Windows installation without network and live testing on supported dish/router hardware remain release checks. Existing release workflows are being consolidated in the next ticket; local builds never publish automatically.
+The single [desktop workflow](.github/workflows/desktop-release.yml) runs behavioral tests, builds, packaging smokes, and offline installation on a disposable hosted Windows runner. Local builds never publish. Publication requires a separate manual request, the exact offline-tested installer bytes, and accepted live hardware evidence or explicit acknowledgment of its limitations. See [release verification](docs/release-verification.md).

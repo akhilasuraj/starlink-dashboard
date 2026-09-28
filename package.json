@@ -1,11 +1,11 @@
 {
   "name": "starlink-dashboard",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Starlink Statistics Dashboard",
   "main": "main.js",
   "scripts": {
     "start": "npm run install:runtime && electron .",
-    "test": "node --test tests/desktop-smoke.test.js tests/main-process-smoke.test.js",
+    "test": "node --test tests/desktop-smoke.test.js tests/main-process-smoke.test.js tests/release-gate.test.js",
     "build:collector": ".venv\\Scripts\\python.exe build/build-collector.py",
     "build": "npm run build:collector && electron-builder --publish never",
     "build:win": "npm run build:collector && electron-builder --win --publish never",

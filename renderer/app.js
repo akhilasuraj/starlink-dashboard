@@ -223,6 +223,15 @@ function renderHistory(history) {
   byId("outage-window").textContent = windowText;
   byId("history-time-note").textContent = history && history.time_note ||
     "Sample times and sources unavailable";
+  const ping = history && history.ping_success;
+  const validPing = isReadingAvailable(ping) && ping.value >= 0 && ping.value <= 100 &&
+    Number.isInteger(ping.sample_count) && ping.sample_count > 0;
+  byId("ping-success").textContent = validPing ? ping.value.toFixed(1) : "--";
+  byId("ping-success-meta").textContent = validPing
+    ? `${duration} window · ${ping.sample_count} observed samples · ` +
+      `Observed ${new Date(ping.observed_start).toLocaleString()}–${new Date(ping.observed_end).toLocaleString()}` +
+      ` · Uncollected time excluded · ${ping.source} · Captured ${new Date(ping.observed_at).toLocaleString()}`
+    : `${duration} window · No valid ping observations · Unavailable`;
 
   function series(metricName, multiplier = 1) {
     return samples.map((sample) => {
@@ -319,6 +328,8 @@ async function updateHistory(force = false) {
         byId(id).textContent = `${label} history unavailable`;
       }
       byId("history-time-note").textContent = "Retrying collection history";
+      byId("ping-success").textContent = "--";
+      byId("ping-success-meta").textContent = `${label} ping observations unavailable`;
       byId("outage-list").textContent = "Outage history unavailable";
     }
     console.error("History fetch failed:", error);
@@ -331,6 +342,8 @@ function showHistoryLoading(range) {
     byId(id).textContent = `Loading ${label} history…`;
   }
   byId("history-time-note").textContent = "Loading observed samples and gaps";
+  byId("ping-success").textContent = "--";
+  byId("ping-success-meta").textContent = `Loading ${label} ping observations…`;
   byId("outage-track").innerHTML = "";
   byId("outage-list").textContent = "Loading dish-reported outages";
   for (const chart of [speedChart, latencyChart, lossChart]) {

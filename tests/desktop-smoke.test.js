@@ -242,6 +242,10 @@ test("15-minute traffic, latency, and loss charts consume the persisted history 
   await app.render();
   assert.match(app.text("history-window"), /15-minute window · Observed/);
   assert.match(app.text("history-time-note"), /estimated from the local poll time/);
+  assert.equal(app.text("ping-success"), "78.0");
+  assert.match(app.text("ping-success-meta"), /15-minute window · 5 observed samples/);
+  assert.match(app.text("ping-success-meta"), /Uncollected time excluded/);
+  assert.match(htmlSource, /Observed ping success/);
   assert.equal(app.charts.length, 3);
   const [traffic, latency, loss] = app.charts;
   assert.equal(traffic.data.datasets[0].label, "Current download traffic (Mbps)");
@@ -258,6 +262,16 @@ test("15-minute traffic, latency, and loss charts consume the persisted history 
   assert.ok(latency.data.datasets[0].data.some((point) => point.y === null));
   assert.ok(loss.data.datasets[0].data.some((point) => point.y === 100));
   assert.match(traffic.data.datasets[0].data.find((point) => point.y === 0).meta, /Estimated sample time/);
+});
+
+test("observed ping success distinguishes no measurements from real zero and hundred percent", async () => {
+  for (const [scenario, expected] of [["ping-unavailable", "--"], ["online-idle", "100.0"], ["ping-total-loss", "0.0"]]) {
+    const app = desktop(apiStatus(scenario), apiHistory(scenario));
+    await app.render();
+    assert.equal(app.text("ping-success"), expected);
+    assert.match(app.text("ping-success-meta"), /15-minute window/);
+    assert.match(app.text("ping-success-meta"), expected === "--" ? /No valid ping observations · Unavailable/ : /1 observed samples/);
+  }
 });
 
 test("dish-reported outage reason and recovery appear on the same 15-minute timeline", async () => {
@@ -310,6 +324,8 @@ test("range selector switches charts and outage window without replacing the liv
   assert.match(app.text("history-window"), /15-minute window/);
   await app.clickRange("24h");
   assert.match(app.text("history-window"), /24-hour window/);
+  assert.match(app.text("ping-success-meta"), /24-hour window · 2 observed samples/);
+  assert.equal(app.text("ping-success"), "100.0");
   assert.equal(app.rangePressed("24h"), "true");
   assert.equal(app.charts[0].options.scales.x.max - app.charts[0].options.scales.x.min, 86400_000);
   assert.equal(app.charts[0].data.datasets[0].showLine, false);
@@ -342,6 +358,8 @@ test("switching to a slow 7-day view clears the old chart and labels while it lo
   const switching = app.clickRange("7d");
   assert.equal(app.rangePressed("7d"), "true");
   assert.match(app.text("history-window"), /Loading 7-day history/);
+  assert.equal(app.text("ping-success"), "--");
+  assert.match(app.text("ping-success-meta"), /Loading 7-day/);
   assert.equal(app.charts[0].data.datasets[0].data.length, 0);
   assert.equal(app.html("outage-track"), "");
   finishWeek(apiHistory("range-views", "7d"));

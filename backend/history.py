@@ -35,6 +35,39 @@ def finite_number(value, divisor=1):
     return value / divisor
 
 
+def drop_fraction(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
+        return None
+    return finite_number(value)
+
+
+def ping_success(samples):
+    observations = []
+    for sample in samples:
+        metric = sample["metrics"]["drop_rate"]
+        loss = drop_fraction(metric["value"])
+        if loss is None or not metric.get("source") or not metric.get("observed_at"):
+            continue
+        count = metric.get("sample_count", 1)
+        if not isinstance(count, int) or isinstance(count, bool) or count <= 0:
+            continue
+        observations.append((metric, count, loss,
+                             metric.get("observed_start") or sample["at"],
+                             metric.get("observed_end") or sample["at"]))
+    count = sum(item[1] for item in observations)
+    return {
+        "value": (1 - sum(item[1] * item[2] for item in observations) / count) * 100 if count else None,
+        "unit": "%",
+        "availability": "available" if count else "unavailable",
+        "source": "observed dish ping-loss samples" if count else None,
+        "observed_at": max(item[0]["observed_at"] for item in observations) if count else None,
+        "sample_count": count,
+        "observed_start": min(item[3] for item in observations) if count else None,
+        "observed_end": max(item[4] for item in observations) if count else None,
+        "gaps_excluded": True,
+    }
+
+
 def default_history_path():
     base = os.environ.get("STARLINK_DASHBOARD_DATA_DIR")
     if base:
@@ -95,7 +128,7 @@ class HistoryStore:
             finite_number(status.get("downlink_throughput_bps"), 1_000_000),
             finite_number(status.get("uplink_throughput_bps"), 1_000_000),
             finite_number(status.get("pop_ping_latency_ms")),
-            finite_number(status.get("pop_ping_drop_rate")),
+            drop_fraction(status.get("pop_ping_drop_rate")),
         )
         with closing(self._connect()) as db:
             db.execute("INSERT OR REPLACE INTO samples VALUES (?,?,?,?,?,?,?,?,?)", values)
@@ -170,7 +203,7 @@ class HistoryStore:
             values = bulk.get(field)
             if not isinstance(values, (list, tuple)) or index >= len(values):
                 return None
-            return finite_number(values[index], divisor)
+            return drop_fraction(values[index]) if field == "pop_ping_drop_rate" else finite_number(values[index], divisor)
 
         with closing(self._connect()) as db:
             previous = db.execute(
@@ -247,6 +280,7 @@ class HistoryStore:
                    if bucket_seconds else "")
             ),
             "samples": samples,
+            "ping_success": ping_success(samples),
             "outages": [{
                 "id": event["id"],
                 "device_id": event["device_id"],
@@ -289,11 +323,13 @@ class HistoryStore:
         rollup_fields = []
         for name in UNITS:
             packed = f"{name}_picked"
+            valid_range = f"AND {name} BETWEEN 0 AND 1 " if name == "drop_rate" else ""
             # The chosen value, capture time, and source travel together in one JSON tuple.
             # Prefixing priority and capture time makes MAX choose the same latest
             # preferred row for all three fields, even across counter-reset overlap.
             picked_fields.append(
                 f"MAX(CASE WHEN time_basis!='uncollected' AND {name} IS NOT NULL "
+                + valid_range +
                 f"AND observed_at IS NOT NULL AND source IS NOT NULL THEN "
                 f"printf('%d%s%s', CASE WHEN time_basis='estimated_from_poll' THEN 1 ELSE 0 END, "
                 f"observed_at, json_array({name}, observed_at, source)) END) AS {packed}"
@@ -308,6 +344,8 @@ class HistoryStore:
                 f"COUNT({name}) AS {name}_count",
                 f"MAX({name}_observed_at) AS {name}_observed_at",
                 f"GROUP_CONCAT(DISTINCT {name}_source) AS {name}_sources",
+                f"MIN(CASE WHEN {name} IS NOT NULL THEN at END) AS {name}_first_at",
+                f"MAX(CASE WHEN {name} IS NOT NULL THEN at END) AS {name}_last_at",
             ))
         query = (
             "WITH picked AS (SELECT at, " + ", ".join(picked_fields) +
@@ -345,6 +383,8 @@ class HistoryStore:
                     "observed_at": bucket[f"{name}_observed_at"],
                     "time_basis": "rollup" if has_value else None,
                     "sample_count": bucket[f"{name}_count"],
+                    "observed_start": bucket[f"{name}_first_at"],
+                    "observed_end": bucket[f"{name}_last_at"],
                 }
             samples.append({
                 "at": bucket["last_at"],
@@ -369,7 +409,8 @@ class HistoryStore:
         metrics = {}
         chosen_rows = []
         for name, unit in UNITS.items():
-            chosen = next((row for row in observed if row[name] is not None), None)
+            chosen = next((row for row in observed if row[name] is not None and
+                           (name != "drop_rate" or drop_fraction(row[name]) is not None)), None)
             value = chosen[name] if chosen is not None else None
             if chosen is not None:
                 chosen_rows.append(chosen)

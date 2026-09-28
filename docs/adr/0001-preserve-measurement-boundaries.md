@@ -1,0 +1,3 @@
+# Preserve the boundary between outages and unmeasured time
+
+The approved revival spec separates collection health from dish-reported service health. Persist confirmed offline observations as reported outages and keep missing collection periods as gaps; idle traffic and failed local RPCs cannot establish an outage. Once an inferred outage is stored as fact, later telemetry cannot reconstruct whether service actually failed, so the history must preserve this uncertainty from ingestion onward. Dish history counter times remain explicitly estimated from the local poll time, with their capture time retained separately.

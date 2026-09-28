@@ -126,6 +126,48 @@ class HistoryRangeApiTests(unittest.TestCase):
     def test_invalid_range_is_rejected(self):
         self.assertEqual(self.client.get("/api/history?range=30d").status_code, 422)
 
+    def test_ping_success_weights_valid_observations_and_excludes_gaps_and_invalid_loss(self):
+        # Two lost-ping samples plus six successful samples = 75%, regardless of buckets.
+        first = NOW - timedelta(minutes=12)
+        for index, loss in enumerate((1, 1)):
+            self.store.record_status({**STATUS, "pop_ping_drop_rate": loss}, first + timedelta(seconds=index))
+        second = NOW - timedelta(minutes=2)
+        self.store.ingest_dish_history(
+            {"samples": 12, "end_counter": 12},
+            {"pop_ping_drop_rate": [0] * 6 + [-0.1, 1.5, True, "0.2", None, float("nan")]},
+            second + timedelta(seconds=12), "ut-range", 500,
+        )
+        for index, invalid in enumerate((-1, 2, False, "0", float("inf"), 10 ** 400)):
+            self.store.record_status({**STATUS, "pop_ping_drop_rate": invalid}, NOW - timedelta(seconds=index))
+        # Reopen the durable store before checking through the public API.
+        app.state.collector.history_store = HistoryStore(self.store.path)
+        for range_name in ("15m", "24h", "7d"):
+            with self.subTest(range_name=range_name):
+                result = self.history(range_name)
+                summary = result["ping_success"]
+                self.assertEqual(summary["value"], 75)
+                self.assertEqual(summary["unit"], "%")
+                self.assertEqual(summary["availability"], "available")
+                self.assertEqual(summary["sample_count"], 8)
+                self.assertEqual(summary["observed_start"], "2026-09-27T11:48:00Z")
+                self.assertEqual(summary["observed_end"], "2026-09-27T11:58:05Z")
+                self.assertTrue(summary["gaps_excluded"])
+                self.assertTrue(summary["source"])
+                self.assertTrue(summary["observed_at"])
+                for sample in result["samples"]:
+                    loss = sample["metrics"]["drop_rate"]["value"]
+                    self.assertTrue(loss is None or 0 <= loss <= 1)
+
+    def test_ping_success_distinguishes_unavailable_from_real_zero_and_hundred_percent(self):
+        for loss, expected in ((None, None), (0, 100), (1, 0)):
+            self.store.record_status({**STATUS, "pop_ping_drop_rate": loss}, NOW)
+            for range_name in ("15m", "24h", "7d"):
+                with self.subTest(loss=loss, range_name=range_name):
+                    summary = self.history(range_name)["ping_success"]
+                    self.assertEqual(summary["value"], expected)
+                    self.assertEqual(summary["sample_count"], 0 if loss is None else 1)
+                    self.assertEqual(summary["availability"], "unavailable" if loss is None else "available")
+
 
 if __name__ == "__main__":
     unittest.main()
